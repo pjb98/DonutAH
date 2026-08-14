@@ -1,0 +1,26 @@
+Donut Market Work Log 6
+Date: 2026-08-14
+
+Summary
+Connected the local repository to the existing GitHub repository, then attempted to push.
+
+Actions
+- Added GitHub remote:
+  https://github.com/pjb98/DonutAH.git
+- Verified the remote as origin for fetch and push.
+- Attempted to push branch main to origin/main.
+
+Result
+- Initial push failed because HTTPS GitHub auth was not available.
+- Attempted GitHub CLI authentication using a token passed through stdin.
+- GitHub CLI reported the token was invalid.
+- Removed the invalid GitHub CLI auth entry for account pjb98.
+
+Current repo status
+- Local git repo exists at /root/donut-market.
+- Branch is main.
+- Remote origin is https://github.com/pjb98/DonutAH.git.
+- Push is still pending because valid GitHub authentication is needed.
+
+Next step
+- Provide a valid GitHub token with repo write access, or run `gh auth login` interactively on the server.
