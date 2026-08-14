@@ -20,7 +20,8 @@ python3 collector.py \
   --service \
   --transaction-pages 10 \
   --tx-interval 5 \
-  --listing-pages-per-cycle 8
+  --listing-pages-per-cycle 8 \
+  --aggregate-interval 300
 ```
 
 This polls all 10 transaction pages every 5 seconds:
@@ -36,6 +37,8 @@ With 8 listing pages per cycle:
 ```
 
 Total planned load is roughly `216 requests/minute`, leaving reserve under the documented `250 requests/minute` API limit.
+
+Candles and market stats are refreshed outside the hot transaction loop every `300` seconds by default. This keeps transaction polling close to the target 5-second cadence.
 
 ## Tables
 

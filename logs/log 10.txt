@@ -1,0 +1,47 @@
+Donut Market Work Log 10
+Date: 2026-08-15
+
+Summary
+Changed the collector to prioritize capturing all recent transactions by removing expensive aggregation work from the 5-second ingestion loop.
+
+Problem
+- The collector service was active, but cycles were completing every 2-3 minutes instead of every 5 seconds.
+- The likely reason was that each cycle refreshed recent candles and recalculated all market_stats.
+- That made transaction polling too slow and increased the chance of missing sales from the short 1,000-transaction API window.
+
+Code changes
+- Removed refresh_recent_candles() from collect_transactions().
+- Removed recalc_market_stats() from every service cycle.
+- Added service-level aggregation timers:
+  - --aggregate-interval, default 300 seconds
+  - --candle-lookback-minutes, default 180 minutes
+- The hot path now does:
+  - fetch transaction pages 1-10
+  - upsert sales
+  - scan the configured rolling listing pages
+  - record next listing page
+- Aggregation now runs only when the aggregate interval has elapsed.
+- Service logs now include cycle_sec and aggregate_sec when aggregation runs.
+
+Expected result
+- Normal cycles should return to roughly 5 seconds.
+- The collector should have a much better chance of capturing all visible transactions.
+- Dashboard stats may update every few minutes instead of every cycle, which is acceptable.
+
+Verification after restart
+- Restarted donut-market.service.
+- Service started successfully with aggregate_interval=300.0s.
+- Recent cycles completed in roughly 2.3-3.1 seconds, then slept until the next 5-second interval.
+- Example cycle logs:
+  - tx_seen=1000 tx_new=45 listing_seen=352 listing_new=352 listing_pages=640->641 cycle_sec=2.79
+  - tx_seen=1000 tx_new=20 listing_seen=352 listing_new=352 listing_pages=648->649 cycle_sec=2.59
+  - tx_seen=1000 tx_new=26 listing_seen=352 listing_new=352 listing_pages=656->657 cycle_sec=2.45
+  - tx_seen=1000 tx_new=21 listing_seen=352 listing_new=352 listing_pages=728->729 cycle_sec=2.98
+
+Database counts after verification
+- sales: 105534
+- listings: 80960
+- candles_1m: 38243
+- market_stats: 6444
+- next_listing_page: 737
+- latest_sale_utc: 2026-08-14 22:57:44

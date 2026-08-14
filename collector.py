@@ -394,7 +394,6 @@ def collect_transactions(conn, api_key, pages):
             break
         time.sleep(0.05)
     after_count = conn.execute("SELECT COUNT(*) FROM auction_sales").fetchone()[0]
-    refresh_recent_candles(conn)
     return total_seen, after_count - before_count
 
 
@@ -691,8 +690,10 @@ def run_service(args):
     print(
         f"{utc_now_iso()} service starting "
         f"tx_pages={args.transaction_pages} tx_interval={args.tx_interval}s "
-        f"listing_pages_per_cycle={args.listing_pages_per_cycle}"
+        f"listing_pages_per_cycle={args.listing_pages_per_cycle} "
+        f"aggregate_interval={args.aggregate_interval}s"
     )
+    next_aggregate_at = time.monotonic() + args.aggregate_interval
     while True:
         cycle_started = time.monotonic()
         next_listing_page = int(get_state(conn, "next_listing_page", "1"))
@@ -705,11 +706,19 @@ def run_service(args):
                 start_page=next_listing_page,
             )
             set_state(conn, "next_listing_page", next_listing_page)
-            recalc_market_stats(conn)
+            aggregate_note = ""
+            if time.monotonic() >= next_aggregate_at:
+                aggregate_started = time.monotonic()
+                refresh_recent_candles(conn, lookback_minutes=args.candle_lookback_minutes)
+                recalc_market_stats(conn)
+                next_aggregate_at = time.monotonic() + args.aggregate_interval
+                aggregate_note = f" aggregate_sec={time.monotonic() - aggregate_started:.2f}"
+            elapsed = time.monotonic() - cycle_started
             print(
                 f"{utc_now_iso()} tx_seen={tx_seen} tx_new={tx_new} "
                 f"listing_seen={listing_seen} listing_new={listing_new} "
-                f"listing_pages={listing_last}->{next_listing_page}"
+                f"listing_pages={listing_last}->{next_listing_page} "
+                f"cycle_sec={elapsed:.2f}{aggregate_note}"
             )
         except Exception as error:
             print(f"{utc_now_iso()} collector_error={error}")
@@ -727,6 +736,8 @@ def main():
     parser.add_argument("--service", action="store_true", help="Run transaction-first long-running ingestion service")
     parser.add_argument("--tx-interval", type=float, default=5.0, help="Seconds between transaction poll cycles in service mode")
     parser.add_argument("--listing-pages-per-cycle", type=int, default=8, help="Listing pages to scan after each transaction poll in service mode")
+    parser.add_argument("--aggregate-interval", type=float, default=300.0, help="Seconds between candle/stat refreshes in service mode")
+    parser.add_argument("--candle-lookback-minutes", type=int, default=180, help="Recent minutes to recalculate for 1m candles")
     parser.add_argument("--show-opportunities", type=int, default=10, help="Print top discount rows after collection")
     parser.add_argument("--min-sales-24h", type=int, default=3, help="Minimum 24h sales for opportunity output")
     args = parser.parse_args()
@@ -734,6 +745,8 @@ def main():
     args.transaction_pages = max(1, min(10, args.transaction_pages))
     args.listing_pages = max(1, args.listing_pages)
     args.listing_pages_per_cycle = max(0, args.listing_pages_per_cycle)
+    args.aggregate_interval = max(30.0, args.aggregate_interval)
+    args.candle_lookback_minutes = max(5, args.candle_lookback_minutes)
 
     if args.service:
         run_service(args)
