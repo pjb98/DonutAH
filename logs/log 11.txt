@@ -1,0 +1,33 @@
+Donut Market Work Log 11
+Date: 2026-08-15
+
+Summary
+Checked whether the collector is still under the documented DonutSMP API rate limit.
+
+Service command
+- transaction pages: 10
+- transaction interval: 5 seconds
+- listing pages per cycle: 8
+- aggregate interval: 300 seconds
+
+Rate-limit math
+- Transaction requests:
+  10 pages * 12 cycles/minute = 120 requests/minute
+- Listing requests:
+  8 pages * 12 cycles/minute = 96 requests/minute
+- Total expected API requests:
+  216 requests/minute
+- Documented API limit:
+  250 requests/minute
+- Estimated reserve:
+  34 requests/minute
+
+Recent service behavior
+- Service is active.
+- Recent cycles are completing in roughly 2.3-5.5 seconds.
+- Most cycles are under the configured 5-second interval.
+- Recent logs showed no HTTP 429 or rate-limit errors.
+
+Conclusion
+- The current configuration should be under the documented 250 requests/minute limit.
+- It is close enough to the limit that retries or extra diagnostics should be kept modest.
