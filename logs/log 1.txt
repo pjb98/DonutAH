@@ -1,0 +1,70 @@
+Donut Market Work Log 1
+Date: 2026-08-14
+
+Summary
+Created the initial DonutSMP auction-market collector project and moved from GUI/Fabric scraping to the official DonutSMP API route.
+
+Files created or updated
+- /root/donut-market/collector.py
+- /root/donut-market/inspect_api.py
+- /root/donut-market/README.md
+- /root/donut-market/api_findings.md
+- /root/donut-market/.env.example
+- /root/donut-market/.gitignore
+- /root/donut-market/donut_market.sqlite
+
+API findings
+- Detailed endpoint shapes, page counts, transaction velocity, and listing-walk findings are stored in /root/donut-market/api_findings.md.
+
+Collector design decision
+Transactions are the primary historical data source because they represent actual sales and have a very short visible history window.
+
+Recommended service polling
+- Fetch transaction pages 1-10 every 5 seconds.
+- This uses about 120 requests/minute.
+- Fetch 8 listing pages per 5-second cycle as a rolling listing sweep.
+- This uses about 96 requests/minute.
+- Total planned load is about 216 requests/minute, leaving reserve under the documented 250 requests/minute limit.
+
+Collector features implemented
+- SQLite storage.
+- Reads DONUT_API_KEY from the environment.
+- Stores raw JSON alongside normalized columns.
+- Stores auction_sales.
+- Stores auction_listing_snapshots.
+- Stores market_stats.
+- Stores collector_state.
+- Stores item_candles_1m for OHLC/median/VWAP chart preaggregates.
+- Tracks base_item_key separately from variant item_key.
+- Adds transaction observation metadata:
+  - collected_first_at
+  - collected_last_at
+  - observation_count
+
+Item identity
+- base_item_key is the plain Minecraft item id, such as minecraft:diamond_pickaxe.
+- item_key is a variant identity based on item id, display name, lore, enchants, and contents.
+- This allows commodity-level analytics and separate analytics for enchanted/custom variants.
+
+Live service test
+Ran a bounded service-mode test for about 12 seconds.
+
+Command shape:
+python3 collector.py --db donut_market.sqlite --service --transaction-pages 10 --tx-interval 5 --listing-pages-per-cycle 8
+
+Observed cycles:
+- cycle 1: tx_seen=1000 tx_new=900 listing_seen=352 listing_new=352 listing_pages=8->9
+- cycle 2: tx_seen=1000 tx_new=94 listing_seen=352 listing_new=352 listing_pages=16->17
+
+Database counts after test
+- sales: 1326
+- listings: 792
+- candles_1m: 415
+- market_stats: 574
+- next_listing_page: 17
+
+Security note
+The API key was not hardcoded into project files. Since it was pasted into chat, it should be rotated/regenerated in-game if DonutSMP supports key rotation.
+
+Future logging rule
+For each meaningful future change or test, create the next numbered file in /root/donut-market/logs, such as log 2.txt, log 3.txt, and so on.

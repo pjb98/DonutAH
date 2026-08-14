@@ -1,0 +1,21 @@
+Donut Market Work Log 4
+Date: 2026-08-14
+
+Summary
+Set up local git versioning for the Donut Market project.
+
+Actions
+- Initialized /root/donut-market as a git repository on branch main.
+- Verified .gitignore excludes local secrets, SQLite database files, WAL/SHM files, and Python cache files.
+- Prepared source, docs, dashboard files, service templates, and logs for the initial commit.
+
+Important ignore rules
+- .env is ignored.
+- *.sqlite is ignored.
+- *.sqlite-* is ignored.
+- __pycache__/ is ignored.
+
+GitHub status
+- GitHub CLI is not installed on this machine.
+- A GitHub remote has not been added yet.
+- To push, provide a GitHub repository URL or configure GitHub CLI/token auth.

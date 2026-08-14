@@ -1,0 +1,41 @@
+Donut Market Work Log 2
+Date: 2026-08-14
+
+Summary
+Set up files needed to run the collector continuously as a systemd service.
+
+Files created
+- /root/donut-market/.env
+- /root/donut-market/donut-market.service
+
+Systemd installation
+- Copied /root/donut-market/donut-market.service to /etc/systemd/system/donut-market.service.
+- Ran systemctl daemon-reload.
+- Enabled donut-market.service at boot.
+- Started donut-market.service.
+
+Service behavior
+- Runs /root/donut-market/collector.py in service mode.
+- Polls transaction pages 1-10 every 5 seconds.
+- Scans 8 active listing pages per cycle as a rolling sweep.
+- Uses /root/donut-market/donut_market.sqlite as the database.
+- Restarts automatically after crashes with a 5-second delay.
+
+Security note
+- The API key is stored in /root/donut-market/.env.
+- /root/donut-market/.env is ignored by git through /root/donut-market/.gitignore.
+- File permissions should be restricted to root-only after setup.
+
+Verification
+- systemctl status showed donut-market.service active and running.
+- Main process was python3 running collector.py in service mode.
+- Journal logs showed successful polling cycles:
+  - tx_seen=1000 tx_new=969 listing_seen=352 listing_new=352 listing_pages=24->25
+  - tx_seen=1000 tx_new=45 listing_seen=352 listing_new=352 listing_pages=32->33
+  - tx_seen=1000 tx_new=42 listing_seen=352 listing_new=352 listing_pages=40->41
+
+Database counts during verification
+- sales: 2488
+- listings: 2552
+- candles_1m: 988
+- market_stats: 1024

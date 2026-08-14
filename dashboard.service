@@ -1,0 +1,15 @@
+[Unit]
+Description=DonutSMP market dashboard
+After=network-online.target donut-market.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/donut-market/dashboard
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /root/donut-market/dashboard/server.py --db /root/donut-market/donut_market.sqlite --host 0.0.0.0 --port 8095
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

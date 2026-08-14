@@ -1,0 +1,16 @@
+[Unit]
+Description=DonutSMP auction market collector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/donut-market
+EnvironmentFile=/root/donut-market/.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /root/donut-market/collector.py --db /root/donut-market/donut_market.sqlite --service --transaction-pages 10 --tx-interval 5 --listing-pages-per-cycle 8
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

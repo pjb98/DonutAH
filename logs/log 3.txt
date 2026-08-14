@@ -1,0 +1,71 @@
+Donut Market Work Log 3
+Date: 2026-08-14
+
+Summary
+Started building the public-facing dashboard for the live Donut market database.
+
+Files created
+- /root/donut-market/dashboard/server.py
+- /root/donut-market/dashboard/static/index.html
+- /root/donut-market/dashboard/static/styles.css
+- /root/donut-market/dashboard/static/app.js
+- /root/donut-market/dashboard.service
+
+Dashboard design
+- Dependency-free Python HTTP server using the standard library.
+- Reads the SQLite database in read-only mode.
+- Serves static HTML/CSS/JS from /root/donut-market/dashboard/static.
+- Intended service port: 8095.
+
+Dashboard API endpoints
+- /api/summary
+- /api/markets
+- /api/movers
+- /api/opportunities
+- /api/candles
+- /api/item
+
+Initial dashboard views
+- Summary metrics.
+- Most Traded table.
+- Sort tabs for trades, units, volume, and liquidity.
+- Underpriced listings panel.
+- Movers panel for gainers and losers.
+- Item detail chart using item_candles_1m.
+
+Notes
+- The dashboard is intentionally read-only.
+- It is designed to run alongside the collector without writing to the SQLite database.
+
+Verification
+- Python syntax check passed for /root/donut-market/dashboard/server.py.
+- JavaScript syntax check passed for /root/donut-market/dashboard/static/app.js.
+- Local HTML request returned index.html successfully.
+- Local API requests returned valid summary, markets, opportunities, and movers JSON.
+
+Systemd installation
+- Installed /root/donut-market/dashboard.service as /etc/systemd/system/donut-market-dashboard.service.
+- Ran systemctl daemon-reload.
+- Enabled donut-market-dashboard.service at boot.
+- Started donut-market-dashboard.service.
+
+Service status
+- Service is active and running.
+- Process command:
+  /usr/bin/python3 /root/donut-market/dashboard/server.py --db /root/donut-market/donut_market.sqlite --host 0.0.0.0 --port 8095
+- Listening on 0.0.0.0:8095.
+
+Live endpoint checks after service start
+- /api/summary returned:
+  sales=34414
+  listings=32032
+  items=4091
+  candles=11290
+  next_listing_page=473
+- /api/markets returned live rows with non-null base_item_key fallback.
+
+Useful commands
+- systemctl status donut-market-dashboard --no-pager
+- journalctl -u donut-market-dashboard -f
+- systemctl restart donut-market-dashboard
+- systemctl stop donut-market-dashboard

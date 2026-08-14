@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Donut Market</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>Donut Market</h1>
+        <p>Transaction-driven auction intelligence</p>
+      </div>
+      <div class="status" id="status">Loading</div>
+    </header>
+
+    <main>
+      <section class="metrics" id="metrics"></section>
+
+      <section class="layout">
+        <div class="panel wide">
+          <div class="panel-head">
+            <h2>Most Traded</h2>
+            <div class="tabs" data-table="markets">
+              <button data-sort="sales" class="active">Trades</button>
+              <button data-sort="units">Units</button>
+              <button data-sort="volume">Volume</button>
+              <button data-sort="liquidity">Liquidity</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>24h Median</th>
+                  <th>Sales</th>
+                  <th>Units</th>
+                  <th>Volume</th>
+                  <th>Lowest Ask</th>
+                </tr>
+              </thead>
+              <tbody id="markets"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Underpriced</h2>
+          </div>
+          <div id="opportunities" class="list"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Movers</h2>
+            <div class="tabs" data-table="movers">
+              <button data-direction="gainers" class="active">Up</button>
+              <button data-direction="losers">Down</button>
+            </div>
+          </div>
+          <div id="movers" class="list"></div>
+        </div>
+
+        <div class="panel wide">
+          <div class="panel-head">
+            <h2 id="chart-title">Select an item</h2>
+            <div class="subtle" id="chart-meta"></div>
+          </div>
+          <canvas id="chart" height="280"></canvas>
+        </div>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
