@@ -1,0 +1,23 @@
+Donut Market Work Log 7
+Date: 2026-08-15
+
+Summary
+Attempted to authenticate GitHub CLI again so the local repository could be pushed to the existing GitHub repository.
+
+Current remote
+- origin: https://github.com/pjb98/DonutAH.git
+
+Result
+- GitHub CLI token authentication failed.
+- GitHub returned HTTP 401: Bad credentials.
+- No push was performed.
+
+Security note
+- The token was passed through stdin.
+- The token was not written to project files.
+- The token is not recorded in this log.
+
+Next step
+- Generate a fresh GitHub token with repository write access, or run `gh auth login` interactively on the server.
+- After valid authentication, run:
+  git push -u origin main
