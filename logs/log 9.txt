@@ -1,0 +1,35 @@
+Donut Market Work Log 9
+Date: 2026-08-15
+
+Summary
+Checked live collector health and database growth.
+
+Service status
+- donut-market.service is active and running.
+- The collector has been running for about 3 hours.
+- Main process:
+  /usr/bin/python3 /root/donut-market/collector.py --db /root/donut-market/donut_market.sqlite --service --transaction-pages 10 --tx-interval 5 --listing-pages-per-cycle 8
+
+Database counts during check
+- sales: 99979
+- listings: 58432
+- candles_1m: 35938
+- market_stats: 6360
+- next_listing_page: 225
+- latest_sale_utc: 2026-08-14 22:42:10
+
+Important finding
+- Data collection is active and current, but the service is not achieving the intended 5-second cycle time.
+- Recent journal entries show cycles completing roughly every 2-3 minutes, not every 5 seconds.
+- Each cycle still fetches 1,000 transactions and 352 listing rows.
+- Recent cycles inserted roughly 875-979 new sales each time, which suggests the collector may be missing sales during high-volume periods.
+
+Likely cause
+- The collector recalculates market_stats and refreshes recent candles inside each hot ingestion cycle.
+- As the database grows, those aggregation jobs are slowing the transaction polling loop.
+
+Recommended next fix
+- Split ingestion from aggregation:
+  - Hot path every 5 seconds: fetch transaction pages 1-10, upsert sales, do minimal gap metrics.
+  - Rolling listings: scan pages on a separate budget.
+  - Aggregation worker every 1-5 minutes: refresh candles and market_stats outside the transaction poll loop.
