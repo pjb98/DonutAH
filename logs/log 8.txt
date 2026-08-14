@@ -1,0 +1,29 @@
+Donut Market Work Log 8
+Date: 2026-08-15
+
+Summary
+Retried GitHub CLI authentication and attempted to push the local repository to the existing GitHub remote.
+
+Current remote
+- origin: https://github.com/pjb98/DonutAH.git
+
+Actions
+- Passed the provided GitHub token to `gh auth login --with-token` through stdin.
+- Checked `gh auth status`.
+- Attempted `git push -u origin main`.
+- Removed the invalid stored GitHub CLI auth entry after failure.
+- Repeated the logout/login/push check once to rule out a stale credential.
+
+Result
+- GitHub CLI accepted the token input command, but `gh auth status` reported the token as invalid.
+- Git push failed because HTTPS authentication was not available.
+- No GitHub push was completed.
+
+Security note
+- The token was not written to project files.
+- The token is not recorded in this log.
+
+Next step
+- Generate a fresh token with valid repo write permissions for pjb98/DonutAH, or run `gh auth login` interactively on the server.
+- After valid authentication, run:
+  git push -u origin main
