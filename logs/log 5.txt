@@ -1,0 +1,27 @@
+Donut Market Work Log 5
+Date: 2026-08-14
+
+Summary
+Checked for GitHub CLI and installed it because it was not present.
+
+Findings
+- `gh` was not on PATH.
+- Ubuntu apt showed package `gh` available but not installed.
+
+Actions
+- Installed GitHub CLI through apt:
+  apt-get update
+  apt-get install -y gh
+
+Installed version
+- gh version 2.45.0
+
+Auth status
+- gh is installed but not logged into any GitHub hosts.
+- Next step is to authenticate with GitHub, then create or connect a repository remote and push branch main.
+
+Notes
+- Local git repo already exists at /root/donut-market.
+- Current branch is main.
+- Initial local commit already exists:
+  3b35895 Initial Donut market dashboard and collector
