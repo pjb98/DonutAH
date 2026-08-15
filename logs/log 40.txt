@@ -1,0 +1,14 @@
+Log 40
+
+Verified Price Stability and Market Depth are not present as public dashboard labels.
+
+Changes made:
+- Updated the dashboard script cache buster to /app.js?v=40 so stale browser bundles refresh.
+
+Verification:
+- Confirmed dashboard/static does not contain visible "Price Stability" or "Market Depth" wording.
+- Ran node --check dashboard/static/app.js successfully.
+- Restarted donut-market-dashboard successfully.
+- Confirmed the service is active.
+- Confirmed the live homepage serves /app.js?v=40.
+- Confirmed the live app script does not contain "Price Stability" or "Market Depth".
