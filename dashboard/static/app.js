@@ -326,6 +326,18 @@ function renderItemDetails(item) {
       ${recipe.missing_prices?.length ? `<div class="empty-note">Missing prices: ${recipe.missing_prices.join(", ")}</div>` : ""}
     </div>
   `).join("") : `<div class="empty-note">No known crafting uses added yet.</div>`;
+  if (crafts.length) {
+    $("crafting-uses").insertAdjacentHTML("afterbegin", `
+      <div class="craft-result-grid">
+        ${crafts.map((recipe) => `
+          <div class="craft-result">
+            <strong>${recipe.result.name}</strong>
+            <span>${recipe.profit === null || recipe.profit === undefined ? "Pricing incomplete" : `${fmtMoney(recipe.profit)} margin`}</span>
+          </div>
+        `).join("")}
+      </div>
+    `);
+  }
 
   $("recent-sales").innerHTML = (item.recent_sales || []).length ? item.recent_sales.map((sale) => `
     <div class="compact-row">

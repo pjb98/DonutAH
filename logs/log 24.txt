@@ -1,0 +1,26 @@
+Log 24 - Fix Leather recipe visibility
+
+Date: 2026-08-15
+
+Finding:
+- The live API for the full Leather item key included recipes.
+- A likely broken path was base-key item URLs such as /item/minecraft:leather.
+- The item detail API previously required an exact item_key match, so base item keys could fail even when market_stats had a matching base_item_key/item_id.
+
+Changes made:
+- Updated /api/item lookup to accept:
+  - exact item_key
+  - base_item_key
+  - item_id
+- When a base key matches multiple rows, it now chooses the highest-sales/highest-volume market row.
+- Added a visible recipe result summary row above detailed recipe cards.
+- Leather now shows simple result cards such as Book, Item Frame, and leather armor pieces before detailed pricing cards.
+
+Verification:
+- python3 -m py_compile dashboard/server.py passed.
+- node --check dashboard/static/app.js passed.
+- Restarted donut-market-dashboard.service successfully.
+- Verified /api/item?item_key=minecraft:leather resolves to minecraft:leather:ddf4ce85a722.
+- Verified the base-key Leather API response includes Leather crafting recipes.
+- Verified /item/minecraft%3Aleather returns HTTP 200.
+- Confirmed donut-market-dashboard.service is active.

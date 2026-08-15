@@ -758,8 +758,15 @@ def item_detail(conn, params):
             END AS change_pct
         FROM market_stats
         WHERE item_key = ?
+           OR base_item_key = ?
+           OR item_id = ?
+        ORDER BY
+            CASE WHEN item_key = ? THEN 0 ELSE 1 END,
+            sales_count_24h DESC,
+            volume_24h DESC
+        LIMIT 1
         """,
-        (item_key,),
+        (item_key, item_key, item_key, item_key),
     )
     if not stats:
         return None

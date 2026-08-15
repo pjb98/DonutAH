@@ -533,6 +533,30 @@ h3 {
   gap: 8px;
 }
 
+.craft-result-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.craft-result {
+  border: 1px solid #2d3931;
+  border-radius: 7px;
+  background: #101411;
+  padding: 10px;
+}
+
+.craft-result strong,
+.craft-result span {
+  display: block;
+}
+
+.craft-result span {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .recipe-card {
   border: 1px solid #2d3931;
   border-radius: 7px;
@@ -710,6 +734,7 @@ h3 {
   .market-pulse,
   .item-market-hero,
   .detail-metrics,
+  .craft-result-grid,
   .ingredient-list,
   .activity-grid,
   .status-grid {
@@ -731,6 +756,7 @@ h3 {
   .market-pulse,
   .item-market-hero,
   .detail-metrics,
+  .craft-result-grid,
   .recipe-math,
   .ingredient-list,
   .activity-grid,
