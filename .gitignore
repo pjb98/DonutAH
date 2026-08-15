@@ -1,4 +1,5 @@
 *.sqlite
 *.sqlite-*
 .env
+.env.dashboard
 __pycache__/

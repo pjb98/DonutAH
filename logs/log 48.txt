@@ -1,0 +1,42 @@
+DonutDex OAuth credential configuration setup - 2026-08-15
+
+Created private dashboard environment file:
+/root/donut-market/.env.dashboard
+
+The file is chmod 600 and is ignored by Git. It contains:
+- DONUTDEX_PUBLIC_BASE_URL
+- DONUTDEX_AUTH_SECRET
+- DONUTDEX_COOKIE_SECURE
+- blank Discord OAuth client fields
+- blank Google OAuth client fields
+- blank Microsoft OAuth client fields
+
+Added systemd drop-in:
+/etc/systemd/system/donut-market-dashboard.service.d/oauth.conf
+
+The drop-in loads:
+EnvironmentFile=-/root/donut-market/.env.dashboard
+
+Reloaded systemd and restarted donut-market-dashboard.service.
+Verified the service is active.
+
+Verified local auth status endpoint:
+http://127.0.0.1:8095/api/auth/me
+
+The endpoint is reachable and reports Discord, Google, and Microsoft as not
+configured yet because provider client IDs/secrets have not been added.
+
+Next credentials needed:
+- DISCORD_CLIENT_ID
+- DISCORD_CLIENT_SECRET
+- GOOGLE_CLIENT_ID
+- GOOGLE_CLIENT_SECRET
+- MICROSOFT_CLIENT_ID
+- MICROSOFT_CLIENT_SECRET
+
+Configured redirect URLs for provider dashboards:
+- http://147.93.176.190:8095/auth/discord/callback
+- http://147.93.176.190:8095/auth/google/callback
+- http://147.93.176.190:8095/auth/microsoft/callback
+
+Do not commit OAuth secrets to Git.
