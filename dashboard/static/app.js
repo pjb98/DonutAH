@@ -15,9 +15,15 @@ function fmtNumber(value, digits = 0) {
 function fmtMoney(value) {
   if (value === null || value === undefined) return "-";
   const n = Number(value);
-  if (Math.abs(n) >= 1_000_000_000) return `$${fmtNumber(Math.round(n / 1_000_000_000))}B`;
-  if (Math.abs(n) >= 1_000_000) return `$${fmtNumber(Math.round(n / 1_000_000))}M`;
-  if (Math.abs(n) >= 1_000) return `$${fmtNumber(Math.round(n / 1_000))}K`;
+  const compact = (divisor, suffix) => {
+    const scaled = n / divisor;
+    const abs = Math.abs(scaled);
+    const digits = abs >= 100 ? 0 : 2;
+    return `$${fmtNumber(scaled, digits)}${suffix}`;
+  };
+  if (Math.abs(n) >= 1_000_000_000) return compact(1_000_000_000, "B");
+  if (Math.abs(n) >= 1_000_000) return compact(1_000_000, "M");
+  if (Math.abs(n) >= 1_000) return compact(1_000, "K");
   return `$${fmtNumber(Math.round(n))}`;
 }
 

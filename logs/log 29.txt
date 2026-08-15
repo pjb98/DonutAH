@@ -1,0 +1,22 @@
+Log 29 - Adjust compact money decimals
+
+Date: 2026-08-15
+
+Changes made:
+- Updated compact money formatting for K/M/B values.
+- Compact values below 100 keep up to 2 decimals.
+- Compact values 100 and above show no decimals.
+- Examples:
+  - 112200 -> $112K
+  - 1750000000 -> $1.75B
+  - 10250000000 -> $10.25B
+  - 110000000000 -> $110B
+  - 112200000 -> $112M
+  - 1750000 -> $1.75M
+
+Verification:
+- node --check dashboard/static/app.js passed.
+- Ran formatter examples with node and verified output.
+- Restarted donut-market-dashboard.service successfully.
+- Verified /item/minecraft%3Aleather returns HTTP 200.
+- Confirmed donut-market-dashboard.service is active.
