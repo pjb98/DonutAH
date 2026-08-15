@@ -1,0 +1,32 @@
+Log 30 - Exclude disallowed book items
+
+Date: 2026-08-15
+
+Changes made:
+- Added a dashboard-level excluded item list for book items that should not appear as auction targets:
+  - minecraft:book
+  - minecraft:enchanted_book
+  - minecraft:writable_book
+  - minecraft:written_book
+  - minecraft:knowledge_book
+- Filtered excluded book items out of:
+  - Market tables
+  - Movers
+  - Deal/opportunity results
+  - Search results
+  - Recipe pricing lookups
+  - Crafting use outputs
+  - Direct item page/API lookups
+- Removed the Book crafting use from Leather by filtering excluded recipe outputs.
+- Removed the word "books" from the Leather item summary.
+
+Notes:
+- Bookshelf and Chiseled Bookshelf are still visible because they are block items, not book items.
+
+Verification:
+- python3 -m py_compile dashboard/server.py passed.
+- Restarted donut-market-dashboard.service successfully.
+- Verified /api/search?q=book no longer returns actual book items.
+- Verified direct /api/item lookup for Enchanted Book returns null.
+- Verified Leather crafting uses no longer include Book and still include Item Frame.
+- Confirmed donut-market-dashboard.service is active.

@@ -11,6 +11,22 @@ from urllib.parse import parse_qs, urlparse
 ROOT = Path(__file__).resolve().parent
 STATIC_ROOT = ROOT / "static"
 CACHE = {}
+EXCLUDED_ITEM_IDS = {
+    "minecraft:book",
+    "minecraft:enchanted_book",
+    "minecraft:writable_book",
+    "minecraft:written_book",
+    "minecraft:knowledge_book",
+}
+
+
+def is_excluded_item(item_id):
+    return item_id in EXCLUDED_ITEM_IDS
+
+
+def excluded_sql(column="item_id"):
+    placeholders = ",".join(f"'{item_id}'" for item_id in sorted(EXCLUDED_ITEM_IDS))
+    return f"({column} IS NULL OR {column} NOT IN ({placeholders}))"
 
 
 def cached(key, ttl_seconds, factory):
@@ -269,7 +285,7 @@ def item_uses(item_id):
             ],
         },
         "minecraft:leather": {
-            "summary": "Common crafting material used for books, item frames, and leather armor.",
+            "summary": "Common crafting material used for item frames and leather armor.",
             "crafting": [
                 {
                     "result": {"item_id": "minecraft:book", "name": "Book", "quantity": 1},
@@ -316,6 +332,7 @@ def item_uses(item_id):
 
 
 def decorate_items(items):
+    items = [item for item in items if not is_excluded_item(item.get("item_id"))]
     for item in items:
         item["variant_note"] = variant_note(item.get("item_id"))
     return items
@@ -339,6 +356,7 @@ def market_prices(conn, item_ids):
             volume_24h
         FROM market_stats
         WHERE item_id IN ({placeholders})
+          AND {excluded_sql()}
         ORDER BY item_id, sales_count_24h DESC, volume_24h DESC
         """,
         tuple(item_ids),
@@ -364,7 +382,10 @@ def market_prices(conn, item_ids):
 
 
 def enrich_recipe_economics(conn, uses):
-    recipes = uses.get("crafting", [])
+    recipes = [
+        recipe for recipe in uses.get("crafting", [])
+        if not is_excluded_item((recipe.get("result") or {}).get("item_id"))
+    ]
     item_ids = set()
     for recipe in recipes:
         result = recipe.get("result", {})
@@ -592,6 +613,7 @@ def top_markets(conn, params):
             {movement_expr()} AS change_pct
         FROM market_stats
         WHERE sales_count_24h > 0
+          AND {excluded_sql()}
         )
         ORDER BY {order_by}
         LIMIT ?
@@ -625,6 +647,7 @@ def movers(conn, params):
               AND sold_median_7d IS NOT NULL
               AND sold_median_7d > 0
               AND sales_count_24h >= 5
+              AND {excluded_sql()}
         )
         ORDER BY {order}
         LIMIT ?
@@ -639,7 +662,7 @@ def opportunities(conn, params):
     min_sales = clamp_limit(params.get("min_sales", ["5"])[0], default=5, maximum=1000)
     result = rows(
         conn,
-        """
+        f"""
         SELECT *
         FROM (
             SELECT
@@ -663,6 +686,7 @@ def opportunities(conn, params):
               AND market_value > 0
               AND lowest_listing < market_value
               AND sales_count_24h >= ?
+              AND {excluded_sql()}
         )
         ORDER BY discount_pct DESC, liquidity_score DESC
         LIMIT ?
@@ -696,8 +720,11 @@ def search(conn, params):
             volume_24h,
             {movement_expr()} AS change_pct
         FROM market_stats
-        WHERE lower(COALESCE(display_name, '')) LIKE ?
-           OR lower(item_id) LIKE ?
+        WHERE (
+               lower(COALESCE(display_name, '')) LIKE ?
+            OR lower(item_id) LIKE ?
+        )
+          AND {excluded_sql()}
         ORDER BY
             CASE
                 WHEN lower(COALESCE(display_name, '')) = ? THEN 0
@@ -771,6 +798,8 @@ def item_detail(conn, params):
         (item_key, item_key, item_key, item_key),
     )
     if not stats:
+        return None
+    if is_excluded_item(stats.get("item_id")):
         return None
     stats["variant_note"] = variant_note(stats.get("item_id"))
     stats["max_stack"] = max_stack_size(stats.get("item_id"))
