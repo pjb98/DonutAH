@@ -430,7 +430,7 @@ function recipeDetail(recipe) {
         </div>
         <div class="recipe-profit ${profitClass(recipe.profit)}">
           ${canPriceRecipe ? fmtMoney(recipe.profit) : "Price unknown"}
-          <span>${canPriceRecipe && recipe.profit_pct !== null && recipe.profit_pct !== undefined ? `${fmtPct(recipe.profit_pct)} could earn` : "Not enough sales to estimate"}</span>
+          <span>${canPriceRecipe && recipe.profit_pct !== null && recipe.profit_pct !== undefined ? `${fmtPct(recipe.profit_pct)} extra money` : "Not enough sales to estimate"}</span>
         </div>
       </div>
       ${recipeStats.length ? `
@@ -468,7 +468,7 @@ function renderCraftingUses(crafts, selectedIndex) {
       ${crafts.map((recipe, index) => `
         <button class="craft-result ${index === active ? "active" : ""}" data-recipe-index="${index}">
           <strong class="item-cell">${itemIcon(recipe.result, "tiny")}<span>${escapeHtml(recipe.result.name)}</span></strong>
-          <span>${recipe.profit === null || recipe.profit === undefined ? "Price unknown" : `Could earn ${fmtMoney(recipe.profit)}`}</span>
+          <span>${recipe.profit === null || recipe.profit === undefined ? "Price unknown" : `${fmtMoney(recipe.profit)} extra`}</span>
           <span>${fmtNumber(recipe.result.sales_count_24h)} sold · ${fmtMoney(recipe.result.volume_24h)} spent</span>
         </button>
       `).join("")}

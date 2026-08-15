@@ -1,0 +1,16 @@
+Log 42
+
+Replaced crafting profit and appreciation-style public wording.
+
+Changes made:
+- Changed market movement tabs from "Gainers" and "Losers" to "Price Up" and "Price Down".
+- Changed crafting "Could earn" text to "extra" / "extra money".
+- Updated the dashboard script cache buster to /app.js?v=42.
+
+Verification:
+- Confirmed dashboard/static does not contain visible "Crafting Profit", "Appreciation", "Gainers", "Losers", or "Could earn" wording.
+- Ran node --check dashboard/static/app.js successfully.
+- Restarted donut-market-dashboard successfully.
+- Confirmed the service is active.
+- Confirmed the live homepage serves "Price Up", "Price Down", and /app.js?v=42.
+- Confirmed the live app script serves the new crafting "extra" wording.
