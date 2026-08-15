@@ -174,6 +174,9 @@ def connect(db_path):
         CREATE INDEX IF NOT EXISTS idx_sales_sold_at
             ON auction_sales(sold_at);
 
+        CREATE INDEX IF NOT EXISTS idx_sales_item_sold_at_ms
+            ON auction_sales(item_key, sold_at_ms);
+
         CREATE TABLE IF NOT EXISTS auction_listing_snapshots (
             listing_key TEXT PRIMARY KEY,
             snapshot_at TEXT NOT NULL,
@@ -198,6 +201,9 @@ def connect(db_path):
 
         CREATE INDEX IF NOT EXISTS idx_listing_snapshot_item
             ON auction_listing_snapshots(snapshot_at, item_key);
+
+        CREATE INDEX IF NOT EXISTS idx_listing_page_snapshot
+            ON auction_listing_snapshots(page, snapshot_at);
 
         CREATE TABLE IF NOT EXISTS market_stats (
             item_key TEXT PRIMARY KEY,
@@ -530,6 +536,22 @@ def recalc_market_stats(conn):
     one_hour_ms = now_ms - 60 * 60 * 1000
     one_day_ms = now_ms - 24 * 60 * 60 * 1000
     seven_days_ms = now_ms - 7 * 24 * 60 * 60 * 1000
+
+    def price_medians(cutoff_ms):
+        grouped = {}
+        for item_key, price_each in conn.execute(
+            """
+            SELECT item_key, price_each
+            FROM auction_sales
+            WHERE sold_at_ms >= ?
+              AND price_each IS NOT NULL
+            ORDER BY item_key
+            """,
+            (cutoff_ms,),
+        ):
+            grouped.setdefault(item_key, []).append(price_each)
+        return {item_key: median_or_none(prices) for item_key, prices in grouped.items()}
+
     conn.execute("DELETE FROM market_stats")
     item_keys = {
         row[0]
@@ -542,66 +564,95 @@ def recalc_market_stats(conn):
         )
     }
 
-    for key in item_keys:
-        item_row = conn.execute(
+    metadata_by_item = {}
+    for row in conn.execute(
+        """
+        SELECT item_key, base_item_key, item_id, display_name, MAX(sold_at_ms) AS last_seen
+        FROM auction_sales
+        GROUP BY item_key
+        """
+    ):
+        metadata_by_item[row[0]] = {
+            "base_item_key": row[1],
+            "item_id": row[2],
+            "display_name": row[3],
+            "last_seen": row[4] or 0,
+        }
+    for row in conn.execute(
+        """
+        SELECT item_key, base_item_key, item_id, display_name, MAX(snapshot_at) AS last_seen
+        FROM auction_listing_snapshots
+        GROUP BY item_key
+        """
+    ):
+        existing = metadata_by_item.get(row[0])
+        if not existing or (row[4] or "") > str(existing.get("last_seen") or ""):
+            metadata_by_item[row[0]] = {
+                "base_item_key": row[1],
+                "item_id": row[2],
+                "display_name": row[3],
+                "last_seen": row[4],
+            }
+
+    sold_median_1h = price_medians(one_hour_ms)
+    sold_median_24h = price_medians(one_day_ms)
+    sold_median_7d = price_medians(seven_days_ms)
+    sales_24h_by_item = {
+        row[0]: (row[1] or 0, row[2] or 0, row[3] or 0)
+        for row in conn.execute(
             """
-            SELECT base_item_key, item_id, display_name FROM auction_sales WHERE item_key = ?
-            UNION ALL
-            SELECT base_item_key, item_id, display_name FROM auction_listing_snapshots WHERE item_key = ?
-            LIMIT 1
+            SELECT
+                item_key,
+                COALESCE(SUM(quantity), 0) AS units,
+                COUNT(*) AS sales,
+                COALESCE(SUM(total_price), 0) AS volume
+            FROM auction_sales
+            WHERE sold_at_ms >= ?
+            GROUP BY item_key
             """,
-            (key, key),
-        ).fetchone()
-        base_key, item_id, display_name = item_row if item_row else (None, None, None)
+            (one_day_ms,),
+        )
+    }
+
+    listing_rows_by_item = {}
+    for row in conn.execute(
+        """
+        WITH latest_page_scans AS (
+            SELECT page, MAX(snapshot_at) AS snapshot_at
+            FROM auction_listing_snapshots
+            GROUP BY page
+        )
+        SELECT listings.item_key, listings.price_each, listings.quantity
+        FROM auction_listing_snapshots listings
+        JOIN latest_page_scans latest
+          ON latest.page = listings.page
+         AND latest.snapshot_at = listings.snapshot_at
+        """
+    ):
+        listing_rows_by_item.setdefault(row[0], []).append((row[1], row[2]))
+
+    for key in item_keys:
+        item_meta = metadata_by_item.get(key, {})
+        base_key = item_meta.get("base_item_key")
+        item_id = item_meta.get("item_id")
+        display_name = item_meta.get("display_name")
         if not display_name:
             display_name = readable_name_from_id(item_id)
 
-        sold_1h = [row[0] for row in conn.execute(
-            "SELECT price_each FROM auction_sales WHERE item_key = ? AND sold_at_ms >= ?",
-            (key, one_hour_ms),
-        )]
-        sold_24h = [row[0] for row in conn.execute(
-            "SELECT price_each FROM auction_sales WHERE item_key = ? AND sold_at_ms >= ?",
-            (key, one_day_ms),
-        )]
-        sold_7d = [row[0] for row in conn.execute(
-            "SELECT price_each FROM auction_sales WHERE item_key = ? AND sold_at_ms >= ?",
-            (key, seven_days_ms),
-        )]
-        sales_24h = conn.execute(
-            """
-            SELECT COALESCE(SUM(quantity), 0), COUNT(*), COALESCE(SUM(total_price), 0)
-            FROM auction_sales
-            WHERE item_key = ? AND sold_at_ms >= ?
-            """,
-            (key, one_day_ms),
-        ).fetchone()
-
-        latest_snapshot = conn.execute("SELECT MAX(snapshot_at) FROM auction_listing_snapshots").fetchone()[0]
-        listing_rows = []
-        if latest_snapshot:
-            listing_rows = list(
-                conn.execute(
-                    """
-                    SELECT price_each, quantity
-                    FROM auction_listing_snapshots
-                    WHERE item_key = ? AND snapshot_at = ?
-                    """,
-                    (key, latest_snapshot),
-                )
-            )
+        listing_rows = listing_rows_by_item.get(key, [])
         listing_prices = [row[0] for row in listing_rows]
         listed_quantity = sum(int(row[1] or 0) for row in listing_rows)
 
-        sold_median_1h = median_or_none(sold_1h)
-        sold_median_24h = median_or_none(sold_24h)
-        sold_median_7d = median_or_none(sold_7d)
+        median_1h = sold_median_1h.get(key)
+        median_24h = sold_median_24h.get(key)
+        median_7d = sold_median_7d.get(key)
+        sales_24h = sales_24h_by_item.get(key, (0, 0, 0))
         median_listing = median_or_none(listing_prices)
         lowest_listing = min(listing_prices) if listing_prices else None
         market_value = next(
-            value for value in [sold_median_24h, sold_median_7d, median_listing, lowest_listing] if value is not None
-        ) if any(value is not None for value in [sold_median_24h, sold_median_7d, median_listing, lowest_listing]) else None
-        liquidity_score = min(100.0, float(sales_24h[1] or 0) * 2.0)
+            value for value in [median_24h, median_7d, median_listing, lowest_listing] if value is not None
+        ) if any(value is not None for value in [median_24h, median_7d, median_listing, lowest_listing]) else None
+        liquidity_score = min(100.0, float(sales_24h[1]) * 2.0)
 
         conn.execute(
             """
@@ -620,12 +671,12 @@ def recalc_market_stats(conn):
                 base_key,
                 item_id,
                 display_name,
-                sold_median_1h,
-                sold_median_24h,
-                sold_median_7d,
-                int(sales_24h[0] or 0),
-                int(sales_24h[1] or 0),
-                float(sales_24h[2] or 0),
+                median_1h,
+                median_24h,
+                median_7d,
+                int(sales_24h[0]),
+                int(sales_24h[1]),
+                float(sales_24h[2]),
                 lowest_listing,
                 median_listing,
                 len(listing_rows),

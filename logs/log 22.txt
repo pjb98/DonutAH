@@ -1,0 +1,35 @@
+Log 22 - Fix active listing aggregation
+
+Date: 2026-08-15
+
+Finding:
+- Egg listings were present in auction_listing_snapshots, but market_stats showed no active asks.
+- The bug was in recalc_market_stats.
+- It used only SELECT MAX(snapshot_at) globally across all listing snapshots.
+- Because the listing collector scans the AH in rolling page batches, the newest global snapshot only represents the latest small page batch, not the whole auction house.
+- Any item not present on that newest batch was incorrectly treated as having zero listings.
+
+Fix:
+- Changed listing aggregation to reconstruct the current known market from the latest scan of each AH page.
+- Precomputed listing rows by item from:
+  - latest snapshot per page
+  - joined back to auction_listing_snapshots
+- market_stats now calculates lowest_listing, median_listing, listing_count, and listed_quantity from that page-current view.
+
+Performance work:
+- Added an index on auction_sales(item_key, sold_at_ms).
+- Added an index on auction_listing_snapshots(page, snapshot_at).
+- Reworked recalc_market_stats to bulk aggregate sales medians and 24h sales stats instead of scanning sales per item repeatedly.
+- Manual optimized rebuild completed in about 26 seconds.
+
+Verification:
+- python3 -m py_compile collector.py passed.
+- Manually recalculated market_stats.
+- Egg now shows:
+  - lowest_listing 312.5
+  - median_listing 3125.0
+  - listing_count 142
+  - listed_quantity 1913
+- Live /api/item for Egg returns the corrected listing stats.
+- Restarted donut-market.service after the manual rebuild.
+- Confirmed collector service is active and running successful collection cycles.
