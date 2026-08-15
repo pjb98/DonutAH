@@ -1,0 +1,21 @@
+Log 45
+
+Cleaned up disk space from non-Donut storage and verified the Donut collector stayed healthy.
+
+Actions taken:
+- Checked Donut collector health and disk usage.
+- Confirmed donut-market.service was active.
+- Checked current Donut database row counts and latest sale/listing timestamps.
+- Compacted system journal logs with journalctl --vacuum-size=200M, freeing about 1.7G.
+- Identified the largest non-Donut project files.
+- Deleted /root/pumpfun-research/data/pumpfun.sqlite after approval, freeing about 7.1G.
+- Cleaned disposable /tmp Playwright/cache/smoke-test artifacts, reducing /tmp from about 211M to 15M.
+
+Results:
+- Root disk usage improved from about 77% used to 64% used.
+- Free disk improved from about 17G to 26G.
+- /root/pumpfun-research dropped from about 8.2G to 1.2G.
+- /root/solana-wallet-investigator was left untouched because active Solana wallet investigator services are using it.
+- Donut collector remained active after cleanup.
+- Donut data after cleanup check: 353,097 sales and 2,242,416 listing snapshot rows.
+- Latest sale timestamp checked: 2026-08-15 12:08:19 UTC.
