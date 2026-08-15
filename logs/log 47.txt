@@ -1,0 +1,35 @@
+Log 47
+
+Added account login foundation with Discord, Google, and Microsoft OAuth support.
+
+Changes made:
+- Added account/session database tables to donut_market.sqlite.
+- Added signed session cookies.
+- Added OAuth provider routes:
+  - /auth/discord
+  - /auth/google
+  - /auth/microsoft
+  - /auth/{provider}/callback
+- Added auth/profile API endpoints:
+  - GET /api/auth/me
+  - POST /api/auth/logout
+  - POST /api/account/profile
+  - GET /api/account/transactions
+- Added /account page.
+- Added login buttons for Discord, Google, and Microsoft.
+- Added account profile form with account name and Minecraft name.
+- Added account sales history that matches the user's Minecraft name against seller_name in auction_sales.
+- Added OAUTH_SETUP.md documenting required OAuth environment variables and callback URLs.
+
+Verification:
+- Ran python3 -m py_compile dashboard/server.py successfully.
+- Ran node --check dashboard/static/app.js successfully.
+- Restarted donut-market-dashboard successfully.
+- Confirmed /account serves the account UI.
+- Confirmed /api/auth/me returns provider status.
+- Confirmed /auth/discord redirects to /account?auth_error=discord_not_configured until credentials are configured.
+- Confirmed /api/account/transactions returns 401 while logged out.
+
+Notes:
+- OAuth buttons are visible but disabled as "Needs setup" until provider client IDs/secrets are configured on the dashboard service.
+- Current transaction history is seller-side only because the collected Donut sale rows expose seller_name.

@@ -1014,6 +1014,190 @@ h3 {
   font-size: 15px;
 }
 
+.account-panel {
+  display: none;
+}
+
+body.account-route .market-pulse,
+body.account-route .main-panel,
+body.account-route .side-stack,
+body.account-route .chart-panel,
+body.account-route .item-detail-panel,
+body.account-route .activity-panel,
+body.account-route .status-panel {
+  display: none;
+}
+
+body.account-route main {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+body.account-route .layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+body.account-route .account-panel {
+  display: block;
+  grid-column: 1 / -1;
+}
+
+.account-body {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.login-card,
+.profile-card {
+  border: 1px solid #2d3931;
+  border-radius: 8px;
+  background: #151b17;
+  padding: 14px;
+}
+
+.login-card p,
+.profile-card p {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.login-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(150px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.login-button {
+  border: 1px solid #2d3931;
+  border-radius: 7px;
+  background: #101411;
+  color: var(--text);
+  padding: 12px;
+  text-decoration: none;
+}
+
+.login-button strong,
+.login-button span {
+  display: block;
+}
+
+.login-button span {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.login-button.disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.profile-card {
+  display: none;
+  gap: 12px;
+}
+
+.profile-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.profile-card label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.profile-card input {
+  height: 42px;
+  border: 1px solid #2d3931;
+  border-radius: 7px;
+  background: #101411;
+  color: var(--text);
+  padding: 0 12px;
+  font: inherit;
+  text-transform: none;
+}
+
+#save-profile,
+#logout-button {
+  width: fit-content;
+  border: 1px solid #3a493f;
+  background: #203026;
+  color: var(--text);
+}
+
+.account-history {
+  overflow: hidden;
+}
+
+.account-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(130px, 1fr));
+  gap: 1px;
+  background: #27312b;
+}
+
+.account-summary div {
+  background: var(--panel);
+  padding: 12px;
+}
+
+.account-summary span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.account-summary strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 18px;
+}
+
+.account-sales {
+  overflow: auto;
+  padding: 8px;
+}
+
+.account-sales-head,
+.account-sale-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) minmax(80px, 0.6fr) minmax(86px, 0.7fr) minmax(96px, 0.7fr) minmax(80px, 0.6fr);
+  gap: 8px;
+  align-items: center;
+  min-width: 680px;
+  padding: 9px 8px;
+  border-bottom: 1px solid #27312b;
+}
+
+.account-sales-head {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.account-sale-row span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.account-sale-row span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 @media (max-width: 1080px) {
   .hero,
   .layout {
@@ -1029,6 +1213,11 @@ h3 {
   .activity-grid,
   .status-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .login-buttons,
+  .account-summary {
+    grid-template-columns: 1fr;
   }
 }
 

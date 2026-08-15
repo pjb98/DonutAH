@@ -1,22 +1,63 @@
 #!/usr/bin/env python3
 import argparse
+import base64
+import hashlib
+import hmac
 import json
+import os
+import secrets
 import sqlite3
 import time
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlencode, urlparse
+import urllib.error
+import urllib.parse
+import urllib.request
 
 
 ROOT = Path(__file__).resolve().parent
 STATIC_ROOT = ROOT / "static"
 CACHE = {}
+SESSION_COOKIE = "donutdex_session"
+SESSION_TTL_SECONDS = 60 * 60 * 24 * 30
+OAUTH_STATE_TTL_SECONDS = 60 * 10
 EXCLUDED_ITEM_IDS = {
     "minecraft:book",
     "minecraft:enchanted_book",
     "minecraft:writable_book",
     "minecraft:written_book",
     "minecraft:knowledge_book",
+}
+
+OAUTH_PROVIDERS = {
+    "discord": {
+        "label": "Discord",
+        "client_id_env": "DISCORD_CLIENT_ID",
+        "client_secret_env": "DISCORD_CLIENT_SECRET",
+        "authorize_url": "https://discord.com/oauth2/authorize",
+        "token_url": "https://discord.com/api/oauth2/token",
+        "userinfo_url": "https://discord.com/api/users/@me",
+        "scope": "identify email",
+    },
+    "google": {
+        "label": "Google",
+        "client_id_env": "GOOGLE_CLIENT_ID",
+        "client_secret_env": "GOOGLE_CLIENT_SECRET",
+        "authorize_url": "https://accounts.google.com/o/oauth2/v2/auth",
+        "token_url": "https://oauth2.googleapis.com/token",
+        "userinfo_url": "https://openidconnect.googleapis.com/v1/userinfo",
+        "scope": "openid email profile",
+    },
+    "microsoft": {
+        "label": "Microsoft",
+        "client_id_env": "MICROSOFT_CLIENT_ID",
+        "client_secret_env": "MICROSOFT_CLIENT_SECRET",
+        "authorize_url": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+        "token_url": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+        "userinfo_url": "https://graph.microsoft.com/v1.0/me",
+        "scope": "openid email profile User.Read",
+    },
 }
 
 
@@ -42,11 +83,74 @@ def cached(key, ttl_seconds, factory):
     return payload
 
 
+def now_iso():
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
 def connect(db_path):
     uri = f"file:{db_path}?mode=ro"
     conn = sqlite3.connect(uri, uri=True, timeout=5)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def connect_write(db_path):
+    conn = sqlite3.connect(db_path, timeout=10)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    ensure_account_tables(conn)
+    return conn
+
+
+def ensure_account_tables(conn):
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            account_name TEXT,
+            minecraft_name TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS user_identities (
+            provider TEXT NOT NULL,
+            provider_user_id TEXT NOT NULL,
+            user_id INTEGER NOT NULL,
+            email TEXT,
+            display_name TEXT,
+            avatar_url TEXT,
+            raw_json TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (provider, provider_user_id),
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_user_identities_user
+            ON user_identities(user_id);
+
+        CREATE TABLE IF NOT EXISTS user_sessions (
+            session_id TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            created_at INTEGER NOT NULL,
+            expires_at INTEGER NOT NULL,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_user_sessions_user
+            ON user_sessions(user_id);
+
+        CREATE TABLE IF NOT EXISTS oauth_states (
+            state TEXT PRIMARY KEY,
+            provider TEXT NOT NULL,
+            created_at INTEGER NOT NULL,
+            expires_at INTEGER NOT NULL,
+            next_path TEXT
+        );
+        """
+    )
+    conn.commit()
 
 
 def rows(conn, sql, params=()):
@@ -56,6 +160,122 @@ def rows(conn, sql, params=()):
 def one(conn, sql, params=()):
     row = conn.execute(sql, params).fetchone()
     return dict(row) if row else None
+
+
+def public_base_url(handler):
+    configured = os.environ.get("DONUTDEX_PUBLIC_BASE_URL")
+    if configured:
+        return configured.rstrip("/")
+    host = handler.headers.get("X-Forwarded-Host") or handler.headers.get("Host") or "127.0.0.1:8095"
+    proto = handler.headers.get("X-Forwarded-Proto") or "http"
+    return f"{proto}://{host}".rstrip("/")
+
+
+def auth_secret():
+    secret = os.environ.get("DONUTDEX_AUTH_SECRET")
+    if secret:
+        return secret.encode("utf-8")
+    fallback = ROOT.parent / ".donutdex_auth_secret"
+    if not fallback.exists():
+        fallback.write_text(secrets.token_urlsafe(48), encoding="utf-8")
+        try:
+            fallback.chmod(0o600)
+        except OSError:
+            pass
+    return fallback.read_text(encoding="utf-8").strip().encode("utf-8")
+
+
+def sign_value(value):
+    digest = hmac.new(auth_secret(), value.encode("utf-8"), hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")
+
+
+def make_cookie_value(session_id):
+    return f"{session_id}.{sign_value(session_id)}"
+
+
+def parse_cookies(header):
+    cookies = {}
+    for part in (header or "").split(";"):
+        if "=" not in part:
+            continue
+        key, value = part.strip().split("=", 1)
+        cookies[key] = value
+    return cookies
+
+
+def valid_session_id(cookie_value):
+    if not cookie_value or "." not in cookie_value:
+        return None
+    session_id, signature = cookie_value.rsplit(".", 1)
+    if hmac.compare_digest(signature, sign_value(session_id)):
+        return session_id
+    return None
+
+
+def json_request(handler):
+    length = int(handler.headers.get("Content-Length") or 0)
+    if length <= 0:
+        return {}
+    return json.loads(handler.rfile.read(length).decode("utf-8"))
+
+
+def provider_config(provider):
+    config = OAUTH_PROVIDERS.get(provider)
+    if not config:
+        return None
+    client_id = os.environ.get(config["client_id_env"])
+    client_secret = os.environ.get(config["client_secret_env"])
+    return {**config, "client_id": client_id, "client_secret": client_secret, "configured": bool(client_id and client_secret)}
+
+
+def oauth_redirect_uri(handler, provider):
+    return f"{public_base_url(handler)}/auth/{provider}/callback"
+
+
+def fetch_form_json(url, form_data, headers=None):
+    body = urllib.parse.urlencode(form_data).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json", **(headers or {})},
+    )
+    with urllib.request.urlopen(req, timeout=20) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def fetch_bearer_json(url, token):
+    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}", "Accept": "application/json"})
+    with urllib.request.urlopen(req, timeout=20) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def normalize_oauth_profile(provider, payload):
+    if provider == "discord":
+        avatar = payload.get("avatar")
+        user_id = str(payload.get("id") or "")
+        avatar_url = f"https://cdn.discordapp.com/avatars/{user_id}/{avatar}.png" if avatar and user_id else None
+        return {
+            "provider_user_id": user_id,
+            "email": payload.get("email"),
+            "display_name": payload.get("global_name") or payload.get("username") or "Discord User",
+            "avatar_url": avatar_url,
+        }
+    if provider == "google":
+        return {
+            "provider_user_id": str(payload.get("sub") or ""),
+            "email": payload.get("email"),
+            "display_name": payload.get("name") or payload.get("email") or "Google User",
+            "avatar_url": payload.get("picture"),
+        }
+    if provider == "microsoft":
+        return {
+            "provider_user_id": str(payload.get("id") or ""),
+            "email": payload.get("mail") or payload.get("userPrincipalName"),
+            "display_name": payload.get("displayName") or payload.get("userPrincipalName") or "Microsoft User",
+            "avatar_url": None,
+        }
+    return {"provider_user_id": "", "email": None, "display_name": "User", "avatar_url": None}
 
 
 def clamp_limit(value, default=25, maximum=100):
@@ -515,6 +735,152 @@ def current_listings(conn, item_key, limit=48):
     )
 
 
+def current_user(conn, handler):
+    cookies = parse_cookies(handler.headers.get("Cookie"))
+    session_id = valid_session_id(cookies.get(SESSION_COOKIE))
+    if not session_id:
+        return None
+    now = int(time.time())
+    user = one(
+        conn,
+        """
+        SELECT users.*
+        FROM user_sessions
+        JOIN users ON users.id = user_sessions.user_id
+        WHERE user_sessions.session_id = ?
+          AND user_sessions.expires_at > ?
+        """,
+        (session_id, now),
+    )
+    if not user:
+        return None
+    identities = rows(
+        conn,
+        """
+        SELECT provider, email, display_name, avatar_url
+        FROM user_identities
+        WHERE user_id = ?
+        ORDER BY provider
+        """,
+        (user["id"],),
+    )
+    return {**user, "identities": identities, "session_id": session_id}
+
+
+def create_session(conn, user_id):
+    session_id = secrets.token_urlsafe(32)
+    now = int(time.time())
+    conn.execute(
+        "INSERT INTO user_sessions(session_id, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
+        (session_id, user_id, now, now + SESSION_TTL_SECONDS),
+    )
+    conn.commit()
+    return session_id
+
+
+def upsert_oauth_user(conn, provider, profile, raw_payload):
+    existing = one(
+        conn,
+        "SELECT user_id FROM user_identities WHERE provider = ? AND provider_user_id = ?",
+        (provider, profile["provider_user_id"]),
+    )
+    now = now_iso()
+    if existing:
+        user_id = existing["user_id"]
+    else:
+        conn.execute(
+            "INSERT INTO users(account_name, minecraft_name, created_at, updated_at) VALUES (?, ?, ?, ?)",
+            (profile["display_name"], None, now, now),
+        )
+        user_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.execute(
+        """
+        INSERT INTO user_identities(
+            provider, provider_user_id, user_id, email, display_name, avatar_url, raw_json, created_at, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(provider, provider_user_id) DO UPDATE SET
+            email = excluded.email,
+            display_name = excluded.display_name,
+            avatar_url = excluded.avatar_url,
+            raw_json = excluded.raw_json,
+            updated_at = excluded.updated_at
+        """,
+        (
+            provider,
+            profile["provider_user_id"],
+            user_id,
+            profile.get("email"),
+            profile.get("display_name"),
+            profile.get("avatar_url"),
+            json.dumps(raw_payload, sort_keys=True),
+            now,
+            now,
+        ),
+    )
+    conn.execute("UPDATE users SET updated_at = ? WHERE id = ?", (now, user_id))
+    conn.commit()
+    return user_id
+
+
+def user_public_payload(user):
+    if not user:
+        return None
+    return {
+        "id": user["id"],
+        "account_name": user.get("account_name"),
+        "minecraft_name": user.get("minecraft_name"),
+        "created_at": user.get("created_at"),
+        "identities": user.get("identities", []),
+    }
+
+
+def provider_status():
+    return [
+        {
+            "provider": key,
+            "label": config["label"],
+            "configured": provider_config(key)["configured"],
+        }
+        for key, config in OAUTH_PROVIDERS.items()
+    ]
+
+
+def player_transaction_history(conn, minecraft_name, limit=100):
+    if not minecraft_name:
+        return {"summary": None, "sales": [], "purchases": []}
+    limited = max(1, min(200, int(limit or 100)))
+    seller_summary = one(
+        conn,
+        """
+        SELECT
+            COUNT(*) AS sales,
+            COALESCE(SUM(quantity), 0) AS items,
+            COALESCE(SUM(total_price), 0) AS money
+        FROM auction_sales
+        WHERE lower(seller_name) = lower(?)
+        """,
+        (minecraft_name,),
+    )
+    seller_rows = rows(
+        conn,
+        f"""
+        SELECT sold_at_ms, item_key, item_id, display_name, quantity, price_each, total_price
+        FROM auction_sales
+        WHERE lower(seller_name) = lower(?)
+        ORDER BY sold_at_ms DESC
+        LIMIT ?
+        """,
+        (minecraft_name, limited),
+    )
+    return {
+        "summary": seller_summary,
+        "sales": seller_rows,
+        "purchases": [],
+        "note": "Donut's transaction data exposes seller names here. Buyer history can be added if the API exposes buyer names.",
+    }
+
+
 def summary(conn):
     now_ms = int(time.time() * 1000)
     day_ms = 24 * 60 * 60 * 1000
@@ -822,16 +1188,26 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
     def translate_path(self, path):
         parsed = urlparse(path)
-        if parsed.path == "/" or parsed.path.startswith("/item/"):
+        if parsed.path == "/" or parsed.path.startswith("/item/") or parsed.path == "/account":
             return str(STATIC_ROOT / "index.html")
         return str(STATIC_ROOT / parsed.path.lstrip("/"))
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        if parsed.path.startswith("/auth/"):
+            self.handle_auth_get(parsed)
+            return
         if parsed.path.startswith("/api/"):
             self.handle_api(parsed)
             return
         super().do_GET()
+
+    def do_POST(self):
+        parsed = urlparse(self.path)
+        if parsed.path.startswith("/api/"):
+            self.handle_api_post(parsed)
+            return
+        self.send_json({"error": "not found"}, status=404)
 
     def end_headers(self):
         if not urlparse(self.path).path.startswith("/api/"):
@@ -862,6 +1238,17 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 elif parsed.path == "/api/item":
                     key = f"item:{parsed.query}"
                     payload = cached(key, 15, lambda: item_detail(conn, params))
+                elif parsed.path == "/api/auth/me":
+                    with connect_write(self.db_path) as write_conn:
+                        user = current_user(write_conn, self)
+                    payload = {"user": user_public_payload(user), "providers": provider_status()}
+                elif parsed.path == "/api/account/transactions":
+                    with connect_write(self.db_path) as write_conn:
+                        user = current_user(write_conn, self)
+                    if not user:
+                        self.send_json({"error": "login required"}, status=401)
+                        return
+                    payload = player_transaction_history(conn, user.get("minecraft_name"), params.get("limit", ["100"])[0])
                 else:
                     self.send_json({"error": "not found"}, status=404)
                     return
@@ -869,12 +1256,151 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         except Exception as error:
             self.send_json({"error": str(error)}, status=500)
 
-    def send_json(self, payload, status=200):
+    def handle_api_post(self, parsed):
+        try:
+            with connect_write(self.db_path) as conn:
+                user = current_user(conn, self)
+                if parsed.path == "/api/account/profile":
+                    if not user:
+                        self.send_json({"error": "login required"}, status=401)
+                        return
+                    payload = json_request(self)
+                    account_name = (payload.get("account_name") or "").strip()[:40] or None
+                    minecraft_name = (payload.get("minecraft_name") or "").strip()[:40] or None
+                    conn.execute(
+                        "UPDATE users SET account_name = ?, minecraft_name = ?, updated_at = ? WHERE id = ?",
+                        (account_name, minecraft_name, now_iso(), user["id"]),
+                    )
+                    conn.commit()
+                    updated = current_user(conn, self)
+                    self.send_json({"user": user_public_payload(updated)})
+                    return
+                if parsed.path == "/api/auth/logout":
+                    if user:
+                        conn.execute("DELETE FROM user_sessions WHERE session_id = ?", (user["session_id"],))
+                        conn.commit()
+                    self.send_json({"ok": True}, clear_session=True)
+                    return
+            self.send_json({"error": "not found"}, status=404)
+        except Exception as error:
+            self.send_json({"error": str(error)}, status=500)
+
+    def handle_auth_get(self, parsed):
+        parts = [part for part in parsed.path.split("/") if part]
+        if len(parts) < 2:
+            self.redirect("/account?auth_error=not_found")
+            return
+        provider = parts[1]
+        config = provider_config(provider)
+        if not config:
+            self.redirect("/account?auth_error=unknown_provider")
+            return
+        if len(parts) == 2:
+            self.start_oauth(provider, config, parsed)
+            return
+        if len(parts) == 3 and parts[2] == "callback":
+            self.finish_oauth(provider, config, parsed)
+            return
+        self.redirect("/account?auth_error=not_found")
+
+    def start_oauth(self, provider, config, parsed):
+        if not config["configured"]:
+            self.redirect(f"/account?auth_error={provider}_not_configured")
+            return
+        query = parse_qs(parsed.query)
+        next_path = query.get("next", ["/account"])[0]
+        if not next_path.startswith("/"):
+            next_path = "/account"
+        state = secrets.token_urlsafe(32)
+        now = int(time.time())
+        with connect_write(self.db_path) as conn:
+            conn.execute("DELETE FROM oauth_states WHERE expires_at <= ?", (now,))
+            conn.execute(
+                "INSERT INTO oauth_states(state, provider, created_at, expires_at, next_path) VALUES (?, ?, ?, ?, ?)",
+                (state, provider, now, now + OAUTH_STATE_TTL_SECONDS, next_path),
+            )
+            conn.commit()
+        params = {
+            "client_id": config["client_id"],
+            "redirect_uri": oauth_redirect_uri(self, provider),
+            "response_type": "code",
+            "scope": config["scope"],
+            "state": state,
+        }
+        if provider == "google":
+            params["access_type"] = "offline"
+            params["prompt"] = "select_account"
+        self.redirect(f"{config['authorize_url']}?{urlencode(params)}")
+
+    def finish_oauth(self, provider, config, parsed):
+        params = parse_qs(parsed.query)
+        code = params.get("code", [""])[0]
+        state = params.get("state", [""])[0]
+        if not code or not state:
+            self.redirect("/account?auth_error=missing_code")
+            return
+        now = int(time.time())
+        with connect_write(self.db_path) as conn:
+            state_row = one(
+                conn,
+                "SELECT * FROM oauth_states WHERE state = ? AND provider = ? AND expires_at > ?",
+                (state, provider, now),
+            )
+            if not state_row:
+                self.redirect("/account?auth_error=bad_state")
+                return
+            conn.execute("DELETE FROM oauth_states WHERE state = ?", (state,))
+            conn.commit()
+        try:
+            token = fetch_form_json(
+                config["token_url"],
+                {
+                    "client_id": config["client_id"],
+                    "client_secret": config["client_secret"],
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "redirect_uri": oauth_redirect_uri(self, provider),
+                },
+            )
+            access_token = token.get("access_token")
+            if not access_token:
+                raise RuntimeError("provider did not return access token")
+            profile_payload = fetch_bearer_json(config["userinfo_url"], access_token)
+            profile = normalize_oauth_profile(provider, profile_payload)
+            if not profile.get("provider_user_id"):
+                raise RuntimeError("provider did not return user id")
+            with connect_write(self.db_path) as conn:
+                user_id = upsert_oauth_user(conn, provider, profile, profile_payload)
+                session_id = create_session(conn, user_id)
+            self.redirect(state_row.get("next_path") or "/account", session_id=session_id)
+        except Exception as error:
+            self.redirect(f"/account?auth_error={urllib.parse.quote(str(error)[:120])}")
+
+    def redirect(self, location, session_id=None):
+        self.send_response(302)
+        self.send_header("Location", location)
+        if session_id:
+            self.send_session_cookie(session_id)
+        self.end_headers()
+
+    def send_session_cookie(self, session_id):
+        secure = "Secure; " if os.environ.get("DONUTDEX_COOKIE_SECURE", "0") == "1" else ""
+        self.send_header(
+            "Set-Cookie",
+            f"{SESSION_COOKIE}={make_cookie_value(session_id)}; Path=/; Max-Age={SESSION_TTL_SECONDS}; HttpOnly; {secure}SameSite=Lax",
+        )
+
+    def clear_session_cookie(self):
+        self.send_header("Set-Cookie", f"{SESSION_COOKIE}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax")
+
+    def send_json(self, payload, status=200, clear_session=False):
         data = json.dumps(payload, separators=(",", ":")).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", str(len(data)))
+        if clear_session:
+            self.clear_session_cookie()
         self.end_headers()
         self.wfile.write(data)
 

@@ -7,6 +7,7 @@ const state = {
   chartPoints: [],
   currentCandles: [],
   currentItem: null,
+  auth: null,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -210,6 +211,7 @@ function itemPath(itemKey) {
 
 function setRouteMode() {
   document.body.classList.toggle("item-route", Boolean(currentPathItemKey()));
+  document.body.classList.toggle("account-route", window.location.pathname === "/account");
 }
 
 async function api(path) {
@@ -734,6 +736,89 @@ async function runSearch(query) {
   });
 }
 
+function authErrorMessage() {
+  const params = new URLSearchParams(window.location.search);
+  const error = params.get("auth_error");
+  if (!error) return "";
+  return error.replaceAll("_", " ");
+}
+
+function renderAccount(auth) {
+  state.auth = auth;
+  const user = auth.user;
+  const message = authErrorMessage();
+  $("auth-message").textContent = message ? `Login issue: ${message}` : "";
+  $("login-card").style.display = user ? "none" : "block";
+  $("profile-card").style.display = user ? "grid" : "none";
+  $("account-history").style.display = user ? "block" : "none";
+  $("login-buttons").innerHTML = auth.providers.map((provider) => `
+    <a class="login-button ${provider.configured ? "" : "disabled"}" href="${provider.configured ? `/auth/${provider.provider}?next=/account` : "#"}" aria-disabled="${provider.configured ? "false" : "true"}">
+      <strong>${provider.label}</strong>
+      <span>${provider.configured ? "Log in" : "Needs setup"}</span>
+    </a>
+  `).join("");
+  if (!user) return;
+  $("account-name").value = user.account_name || "";
+  $("minecraft-name").value = user.minecraft_name || "";
+  $("profile-subtitle").textContent = user.identities.length
+    ? `Connected with ${user.identities.map((identity) => identity.provider).join(", ")}.`
+    : "Connected account.";
+  loadAccountTransactions();
+}
+
+async function loadAccount() {
+  const auth = await api("/api/auth/me");
+  renderAccount(auth);
+}
+
+async function saveProfile() {
+  const res = await fetch("/api/account/profile", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      account_name: $("account-name").value,
+      minecraft_name: $("minecraft-name").value,
+    }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const payload = await res.json();
+  state.auth.user = payload.user;
+  renderAccount(state.auth);
+}
+
+async function logout() {
+  await fetch("/api/auth/logout", { method: "POST" });
+  state.auth = null;
+  await loadAccount();
+}
+
+async function loadAccountTransactions() {
+  if (!state.auth?.user?.minecraft_name) {
+    $("account-summary").innerHTML = `<div class="empty-note">Set your Minecraft name to see your sales.</div>`;
+    $("account-sales").innerHTML = "";
+    return;
+  }
+  const history = await api("/api/account/transactions?limit=100");
+  const summary = history.summary || {};
+  $("account-summary").innerHTML = `
+    <div><span>Sales Found</span><strong>${fmtNumber(summary.sales || 0)}</strong></div>
+    <div><span>Items Sold</span><strong>${fmtNumber(summary.items || 0)}</strong></div>
+    <div><span>Money Earned</span><strong>${fmtMoney(summary.money || 0)}</strong></div>
+  `;
+  $("account-sales").innerHTML = history.sales.length ? `
+    <div class="account-sales-head"><span>Item</span><span>Amount</span><span>Each</span><span>Total</span><span>Sold</span></div>
+    ${history.sales.map((sale) => `
+      <div class="account-sale-row">
+        <span>${itemIcon(sale, "tiny")}${escapeHtml(itemLabel(sale))}</span>
+        <span>${fmtNumber(sale.quantity)}</span>
+        <strong>${fmtMoney(sale.price_each)}</strong>
+        <strong>${fmtMoney(sale.total_price)}</strong>
+        <span>${timeAgo(sale.sold_at_ms)}</span>
+      </div>
+    `).join("")}
+  ` : `<div class="empty-note">No sales found for ${escapeHtml(state.auth.user.minecraft_name)} yet.</div>`;
+}
+
 async function refresh() {
   try {
     const markets = await api(`/api/markets?sort=${state.marketSort}&limit=35`);
@@ -772,6 +857,8 @@ window.addEventListener("popstate", () => {
   setRouteMode();
   if (itemKey) {
     selectItem(itemKey, { updateUrl: false, scroll: true });
+  } else if (window.location.pathname === "/account") {
+    loadAccount();
   }
 });
 
@@ -796,6 +883,18 @@ $("chart-modes").querySelectorAll("button").forEach((button) => {
 $("chart").addEventListener("mousemove", showChartTooltip);
 $("chart").addEventListener("mouseleave", hideChartTooltip);
 
+$("save-profile").addEventListener("click", () => {
+  saveProfile().catch((err) => {
+    $("auth-message").textContent = `Could not save profile: ${err.message}`;
+  });
+});
+
+$("logout-button").addEventListener("click", () => {
+  logout().catch((err) => {
+    $("auth-message").textContent = `Could not log out: ${err.message}`;
+  });
+});
+
 $("search").addEventListener("input", (event) => {
   clearTimeout(state.searchTimer);
   state.searchTimer = setTimeout(() => runSearch(event.target.value), 160);
@@ -811,6 +910,9 @@ refreshSecondary();
 const pathItemKey = currentPathItemKey();
 if (pathItemKey) {
   selectItem(pathItemKey, { updateUrl: false, scroll: false });
+}
+if (window.location.pathname === "/account") {
+  loadAccount();
 }
 setInterval(refresh, 30000);
 setInterval(refreshSecondary, 60000);
