@@ -15,10 +15,10 @@ function fmtNumber(value, digits = 0) {
 function fmtMoney(value) {
   if (value === null || value === undefined) return "-";
   const n = Number(value);
-  if (Math.abs(n) >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(2)}B`;
-  if (Math.abs(n) >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
-  if (Math.abs(n) >= 1_000) return `$${(n / 1_000).toFixed(1)}K`;
-  return `$${fmtNumber(n, 2)}`;
+  if (Math.abs(n) >= 1_000_000_000) return `$${fmtNumber(Math.round(n / 1_000_000_000))}B`;
+  if (Math.abs(n) >= 1_000_000) return `$${fmtNumber(Math.round(n / 1_000_000))}M`;
+  if (Math.abs(n) >= 1_000) return `$${fmtNumber(Math.round(n / 1_000))}K`;
+  return `$${fmtNumber(Math.round(n))}`;
 }
 
 function fmtAsk(value) {
@@ -263,7 +263,7 @@ function drawChart(candles) {
 function renderItemDetails(item) {
   $("detail-title").textContent = itemLabel(item);
   $("detail-subtitle").textContent = item.uses?.summary || "Live market data from recent DonutSMP auction sales.";
-  $("detail-item-id").textContent = item.item_id || "";
+  $("detail-item-id").textContent = "";
   const marketPrice = item.price_each || item.market_value || item.sold_median_24h;
   $("market-price").textContent = fmtMoney(marketPrice);
   $("stack-price").textContent = item.price_stack ? `≈ ${fmtMoney(item.price_stack)} / ${fmtNumber(item.max_stack || 64)} stack` : "";

@@ -1,0 +1,19 @@
+Log 28 - Hide raw item IDs and simplify prices
+
+Date: 2026-08-15
+
+Changes made:
+- Removed the raw minecraft:item_id text from item page headers.
+- Updated money formatting across the frontend:
+  - No cents are shown.
+  - Small prices round to whole dollars.
+  - Thousands round to whole K values.
+  - Millions round to whole M values.
+  - Billions round to whole B values.
+- Example: $112.2K now displays as $112K.
+
+Verification:
+- node --check dashboard/static/app.js passed.
+- Restarted donut-market-dashboard.service successfully.
+- Verified /item/minecraft%3Aleather returns HTTP 200.
+- Confirmed donut-market-dashboard.service is active.
