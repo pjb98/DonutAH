@@ -36,6 +36,12 @@ function itemLabel(row) {
   return row.display_name || (row.item_id || "Unknown").split(":").pop().replaceAll("_", " ");
 }
 
+function itemSubtext(row) {
+  if (row.variant_note) return row.variant_note;
+  if (row.sales_count_24h !== undefined) return `${fmtNumber(row.sales_count_24h)} sales · ${fmtMoney(row.volume_24h)} volume`;
+  return "";
+}
+
 async function api(path) {
   const res = await fetch(path, { cache: "no-store" });
   if (!res.ok) throw new Error(await res.text());
@@ -82,8 +88,7 @@ function renderMarkets(rows) {
     <tr data-item-key="${row.item_key}">
       <td>
         <div class="item-name">${itemLabel(row)}</div>
-        <div class="item-id">${row.item_id}</div>
-        ${variantBadge(row)}
+        <div class="item-id">${itemSubtext(row)}</div>
       </td>
       <td>${fmtMoney(row.sold_median_24h || row.market_value)}</td>
       <td class="${pctClass(row.change_pct)}">${fmtPct(row.change_pct)}</td>
@@ -201,6 +206,10 @@ function drawChart(candles) {
 
 async function selectItem(itemKey) {
   state.selectedItemKey = itemKey;
+  $("chart-title").textContent = "Loading item...";
+  $("chart-meta").textContent = "";
+  $("item-badges").innerHTML = "";
+  $("chart").scrollIntoView({ behavior: "smooth", block: "center" });
   const item = await api(`/api/item?item_key=${encodeURIComponent(itemKey)}&limit=240`);
   $("chart-title").textContent = itemLabel(item);
   $("chart-meta").textContent = `${fmtMoney(item.sold_median_24h || item.market_value)} · ${fmtPct(item.change_pct)} 24h vs 7d · ${fmtNumber(item.sales_count_24h)} sales · ${fmtMoney(item.volume_24h)} volume`;
@@ -223,7 +232,7 @@ async function runSearch(query) {
     <button class="search-result" data-item-key="${row.item_key}">
       <span>
         <strong>${itemLabel(row)}</strong>
-        <small>${row.item_id}</small>
+        <small>${itemSubtext(row)}</small>
       </span>
       <span>${fmtMoney(row.sold_median_24h || row.lowest_listing)}</span>
     </button>
@@ -231,7 +240,8 @@ async function runSearch(query) {
   box.classList.toggle("open", results.length > 0);
   box.querySelectorAll(".search-result").forEach((button) => {
     button.addEventListener("click", () => {
-      $("search").value = itemLabel(results.find((row) => row.item_key === button.dataset.itemKey));
+      const selected = results.find((row) => row.item_key === button.dataset.itemKey);
+      $("search").value = itemLabel(selected);
       box.classList.remove("open");
       selectItem(button.dataset.itemKey);
     });

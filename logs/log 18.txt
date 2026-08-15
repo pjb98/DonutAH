@@ -1,0 +1,28 @@
+Donut Market Work Log 18
+Date: 2026-08-15
+
+Summary
+Fixed item display labels and search selection feedback.
+
+Changes
+- Removed visible raw Minecraft item IDs such as minecraft:filled_map from market rows.
+- Removed raw Minecraft item IDs from search result rows.
+- Replaced raw item IDs with player-facing subtext:
+  - variant warning, when relevant,
+  - otherwise 24h sales and volume.
+- Search selection now:
+  - closes the dropdown,
+  - sets the input to the selected item name,
+  - immediately changes the chart title to "Loading item...",
+  - scrolls smoothly to the chart,
+  - loads and renders the selected item chart.
+
+Verification
+- JavaScript syntax check passed.
+- Dashboard service restarted and is active.
+- Served app.js contains the updated search-selection behavior.
+- Search endpoint timing was about 0.096 seconds.
+- Item detail endpoint timing was about 0.093 seconds.
+
+Note
+- The remaining `row.item_id` usage is only the fallback for items with no display name, not a visible raw ID under normal item rows/search rows.
