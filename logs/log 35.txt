@@ -1,0 +1,17 @@
+Log 35
+
+Replaced remaining visible "Cheapest Listing" and volume-style wording.
+
+Changes made:
+- Changed the market table column from "Cheapest Listing" to "Cheapest Now".
+- Changed "Money Traded" wording to "Money Spent".
+- Changed item-page and crafting stats from "Money Traded Today" to "Money Spent Today".
+- Changed small row/meta text from "traded" to "spent".
+- Updated the dashboard script cache buster to /app.js?v=35.
+
+Verification:
+- Ran node --check dashboard/static/app.js successfully.
+- Restarted donut-market-dashboard successfully.
+- Confirmed the service is active.
+- Confirmed the live homepage serves "Money Spent", "Cheapest Now", and /app.js?v=35.
+- Confirmed the live app script no longer contains visible "Cheapest Listing", "Money Traded", or "traded" wording.
