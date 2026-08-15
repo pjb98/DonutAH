@@ -379,7 +379,7 @@ function renderItemDetails(item) {
     ["Cheapest Now", fmtListing(item.lowest_listing)],
     ["Times Sold Today", fmtNumber(item.sales_count_24h)],
     ["Listings Now", fmtNumber(item.listing_count)],
-    ["Items Listed", fmtNumber(item.listed_quantity)],
+    ["Amount Listed", fmtNumber(item.listed_quantity)],
     ["Money Spent Today", fmtMoney(item.volume_24h)],
   ].map(([label, value]) => `
     <div>

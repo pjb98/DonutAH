@@ -1,0 +1,16 @@
+Log 41
+
+Replaced remaining items-for-sale and arbitrage-style public wording.
+
+Changes made:
+- Changed item-page "Items Listed" to "Amount Listed".
+- Changed homepage "Potential Deals" section to "Good Buys".
+- Updated the dashboard script cache buster to /app.js?v=41.
+
+Verification:
+- Confirmed dashboard/static does not contain visible "Items For Sale", "Items Listed", "Arbitrage", or "Potential Deals" wording.
+- Ran node --check dashboard/static/app.js successfully.
+- Restarted donut-market-dashboard successfully.
+- Confirmed the service is active.
+- Confirmed the live homepage serves "Good Buys" and /app.js?v=41.
+- Confirmed the live app script serves "Amount Listed".
