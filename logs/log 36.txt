@@ -1,0 +1,15 @@
+Log 36
+
+Removed remaining traded/transaction-style public wording from the market controls.
+
+Changes made:
+- Changed the market table tab from "Most Traded" to "Most Sold".
+- Updated the dashboard script cache buster to /app.js?v=36 so browsers load the newest labels.
+
+Verification:
+- Confirmed dashboard/static no longer contains visible "Money Traded", "Transaction Count", "Most Traded", or "traded" wording.
+- Ran node --check dashboard/static/app.js successfully.
+- Restarted donut-market-dashboard successfully.
+- Confirmed the service is active.
+- Confirmed the live homepage serves "Most Sold" and /app.js?v=36.
+- Confirmed the live app script uses "Money Spent" and "Sales" labels.
