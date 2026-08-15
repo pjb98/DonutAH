@@ -1,0 +1,29 @@
+Log 27 - Kid-friendly dashboard wording
+
+Date: 2026-08-15
+
+Changes made:
+- Replaced player-facing market jargon with simpler wording.
+- Changed visible wording such as:
+  - Market Volume -> Money Traded
+  - Transactions -> Sales
+  - Market Activity -> How Busy
+  - Top Volume -> Most Money
+  - Most Liquid -> Easy to Sell
+  - Volume -> Money Traded
+  - Lowest Ask -> Cheapest Listing
+  - Market Price -> Usual Sell Price
+  - Suggested List -> Suggested Sell Price
+  - Current Listings -> For Sale Now
+  - Output Value -> Sell For
+  - Ingredient Cost -> Cost to Make
+  - Result 24h Sales -> Sold Today
+  - Result 24h Volume -> Money Traded Today
+  - Potential Profit -> Could Earn
+- Left backend/API field names unchanged.
+
+Verification:
+- node --check dashboard/static/app.js passed.
+- Restarted donut-market-dashboard.service successfully.
+- Verified /item/minecraft%3Aleather returns HTTP 200.
+- Confirmed donut-market-dashboard.service is active.

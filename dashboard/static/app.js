@@ -70,7 +70,7 @@ function itemLabel(row) {
 
 function itemSubtext(row) {
   if (row.variant_note) return row.variant_note;
-  if (row.sales_count_24h !== undefined) return `${fmtNumber(row.sales_count_24h)} sales · ${fmtMoney(row.volume_24h)} volume`;
+  if (row.sales_count_24h !== undefined) return `${fmtNumber(row.sales_count_24h)} sales · ${fmtMoney(row.volume_24h)} traded`;
   return "";
 }
 
@@ -91,10 +91,10 @@ async function api(path) {
 function renderPulse(summary) {
   const pulse = summary.last_24h || {};
   $("market-pulse").innerHTML = [
-    ["Market Volume", fmtMoney(pulse.volume), pulse.volume_change_pct === null ? "Last 24h" : `${fmtPct(pulse.volume_change_pct)} vs previous 24h`, pctClass(pulse.volume_change_pct)],
+    ["Money Traded", fmtMoney(pulse.volume), pulse.volume_change_pct === null ? "Last 24h" : `${fmtPct(pulse.volume_change_pct)} vs previous 24h`, pctClass(pulse.volume_change_pct)],
     ["Units Sold", fmtNumber(pulse.units), "Last 24h", ""],
-    ["Transactions", fmtNumber(pulse.transactions), "Last 24h", ""],
-    ["Market Activity", pulse.activity || "-", `${fmtNumber(pulse.tx_per_minute, 1)} sales/min`, "activity"],
+    ["Sales", fmtNumber(pulse.transactions), "Last 24h", ""],
+    ["How Busy", pulse.activity || "-", `${fmtNumber(pulse.tx_per_minute, 1)} sales/min`, "activity"],
   ].map(([label, value, detail, klass]) => `
     <div class="metric">
       <div class="label">${label}</div>
@@ -251,7 +251,7 @@ function drawChart(candles) {
   const volumes = candles.map((c) => Number(c.units || 0));
   const maxVol = Math.max(...volumes, 1);
   ctx.fillStyle = "#a5afa9";
-  ctx.fillText("VOLUME", pad.left, rect.height - 8);
+  ctx.fillText("ITEMS SOLD", pad.left, rect.height - 8);
   ctx.fillStyle = "rgba(245, 189, 79, 0.25)";
   volumes.forEach((vol, index) => {
     const x = pad.left + (width * index) / Math.max(1, volumes.length - 1);
@@ -274,16 +274,16 @@ function renderItemDetails(item) {
   $("suggested-modes").innerHTML = [
     ["Quick", suggested.quick],
     ["Market", suggested.market],
-    ["Max", suggested.max_profit],
+    ["High", suggested.max_profit],
   ].map(([label, value]) => `<span>${label} ${fmtMoney(value)}</span>`).join("");
 
   $("detail-metrics").innerHTML = [
-    ["Lowest Ask", fmtAsk(item.lowest_listing)],
-    ["Current Listings", fmtNumber(item.listing_count)],
-    ["Listed Quantity", fmtNumber(item.listed_quantity)],
-    ["24h Median", fmtMoney(item.sold_median_24h)],
-    ["24h Sales", fmtNumber(item.sales_count_24h)],
-    ["24h Volume", fmtMoney(item.volume_24h)],
+    ["Cheapest Listing", fmtAsk(item.lowest_listing)],
+    ["Listings Now", fmtNumber(item.listing_count)],
+    ["Items Listed", fmtNumber(item.listed_quantity)],
+    ["Typical 24h Price", fmtMoney(item.sold_median_24h)],
+    ["Sold Today", fmtNumber(item.sales_count_24h)],
+    ["Money Traded Today", fmtMoney(item.volume_24h)],
   ].map(([label, value]) => `
     <div>
       <span>${label}</span>
@@ -319,24 +319,24 @@ function recipeDetail(recipe) {
         </div>
         <div class="recipe-profit ${profitClass(recipe.profit)}">
           ${recipe.profit === null || recipe.profit === undefined ? "Unknown" : fmtMoney(recipe.profit)}
-          <span>${recipe.profit_pct === null || recipe.profit_pct === undefined ? "Potential Profit" : `${fmtPct(recipe.profit_pct)} Potential Profit`}</span>
+          <span>${recipe.profit_pct === null || recipe.profit_pct === undefined ? "Could Earn" : `${fmtPct(recipe.profit_pct)} could earn`}</span>
         </div>
       </div>
       <div class="recipe-math">
         <div>
-          <span>Output Value</span>
+          <span>Sell For</span>
           <strong>${fmtMoney(recipe.result_value)}</strong>
         </div>
         <div>
-          <span>Ingredient Cost</span>
+          <span>Cost to Make</span>
           <strong>${fmtMoney(recipe.ingredient_cost)}</strong>
         </div>
         <div>
-          <span>Result 24h Sales</span>
+          <span>Sold Today</span>
           <strong>${fmtNumber(recipe.result.sales_count_24h)}</strong>
         </div>
         <div>
-          <span>Result 24h Volume</span>
+          <span>Money Traded Today</span>
           <strong>${fmtMoney(recipe.result.volume_24h)}</strong>
         </div>
       </div>
@@ -365,8 +365,8 @@ function renderCraftingUses(crafts, selectedIndex) {
       ${crafts.map((recipe, index) => `
         <button class="craft-result ${index === active ? "active" : ""}" data-recipe-index="${index}">
           <strong>${recipe.result.name}</strong>
-          <span>${recipe.profit === null || recipe.profit === undefined ? "Pricing incomplete" : `${fmtMoney(recipe.profit)} potential profit`}</span>
-          <span>${fmtNumber(recipe.result.sales_count_24h)} sales · ${fmtMoney(recipe.result.volume_24h)} volume</span>
+          <span>${recipe.profit === null || recipe.profit === undefined ? "Price unknown" : `Could earn ${fmtMoney(recipe.profit)}`}</span>
+          <span>${fmtNumber(recipe.result.sales_count_24h)} sold · ${fmtMoney(recipe.result.volume_24h)} traded</span>
         </button>
       `).join("")}
     </div>
@@ -398,7 +398,7 @@ async function selectItem(itemKey, options = {}) {
   }
   const item = await api(`/api/item?item_key=${encodeURIComponent(itemKey)}&range=${encodeURIComponent(state.chartRange)}`);
   $("chart-title").textContent = itemLabel(item);
-  $("chart-meta").textContent = `${fmtMoney(item.sold_median_24h || item.market_value)} · ${fmtPct(item.change_pct)} 24h vs 7d · ${fmtNumber(item.sales_count_24h)} sales · ${fmtMoney(item.volume_24h)} volume`;
+  $("chart-meta").textContent = `${fmtMoney(item.sold_median_24h || item.market_value)} · ${fmtPct(item.change_pct)} 24h vs 7d · ${fmtNumber(item.sales_count_24h)} sold · ${fmtMoney(item.volume_24h)} traded`;
   $("item-badges").innerHTML = [
     `<span>${item.lowest_listing ? `Ask ${fmtMoney(item.lowest_listing)}` : "No active asks"}</span>`,
     item.variant_note ? `<span>${item.variant_note}</span>` : "",
