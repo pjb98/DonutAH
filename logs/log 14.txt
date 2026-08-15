@@ -1,0 +1,52 @@
+Donut Market Work Log 14
+Date: 2026-08-15
+
+Summary
+Checked disk usage and database growth risk.
+
+Filesystem usage
+- Filesystem: /dev/sda1
+- Size: 72G
+- Used: 51G
+- Available: 21G
+- Use: 71%
+
+Donut project size
+- /root/donut-market total: 612M
+- donut_market.sqlite: 598M
+- donut_market.sqlite-wal: 13M
+- donut_market.sqlite-shm: 32K
+
+SQLite size details
+- page_count: 152949
+- page_size: 4096
+- estimated DB size: 597.46 MB
+
+Current table counts
+- auction_sales: 137359
+- auction_listing_snapshots: 226776
+- item_candles_1m: 49241
+- market_stats: 10561
+
+Time range in database
+- earliest sale: 2026-08-14 17:51:50 UTC
+- latest sale: 2026-08-15 00:43:16 UTC
+- earliest listing snapshot: 2026-08-14T17:51:54+00:00
+- latest listing snapshot: 2026-08-15T00:43:19+00:00
+
+Average raw JSON sizes
+- sales raw_json average: 487.4 bytes
+- listing raw_json average: 737.9 bytes
+
+Conclusion
+- Disk is fine right now, but database growth is material.
+- About 6 hours 51 minutes of collection produced roughly 598 MB of SQLite data.
+- If growth stayed linear, the database could grow by roughly 2 GB/day.
+- Retention and compaction should be added before running for many days.
+
+Recommended next storage fixes
+- Keep raw completed sales long-term, but consider moving old raw rows to compressed archive later.
+- Keep active listing snapshots only for a short retention window, such as 24-72 hours.
+- Keep candles and market_stats for dashboard history.
+- Add periodic cleanup and WAL checkpointing.
+- Consider PostgreSQL or partitioned storage if this becomes a long-running public service.
