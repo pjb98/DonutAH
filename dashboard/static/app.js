@@ -3,6 +3,10 @@ const state = {
   marketSort: "sales",
   searchTimer: null,
   chartRange: "24h",
+  chartMode: "price",
+  chartPoints: [],
+  currentCandles: [],
+  currentItem: null,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -57,6 +61,16 @@ function fmtDurationMs(value) {
   return `${minutes}m left`;
 }
 
+function fmtClock(ms) {
+  if (!ms) return "-";
+  return new Date(Number(ms)).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 function fmtPct(value) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return "-";
   const n = Number(value);
@@ -72,6 +86,29 @@ function pctClass(value) {
 function profitClass(value) {
   if (value === null || value === undefined) return "";
   return Number(value) > 0 ? "gain" : Number(value) < 0 ? "loss" : "";
+}
+
+function freshness(snapshotAt) {
+  const seenAt = Date.parse(snapshotAt);
+  if (!seenAt) return { klass: "old", label: "Last seen unknown" };
+  const minutes = (Date.now() - seenAt) / 60000;
+  if (minutes <= 5) return { klass: "fresh", label: `Seen ${timeAgo(seenAt)}` };
+  if (minutes <= 20) return { klass: "recent", label: `Seen ${timeAgo(seenAt)}` };
+  return { klass: "old", label: `Seen ${timeAgo(seenAt)}` };
+}
+
+function rollingValues(values, windowSize = 7) {
+  return values.map((_, index) => {
+    const start = Math.max(0, index - Math.floor(windowSize / 2));
+    const end = Math.min(values.length, index + Math.ceil(windowSize / 2));
+    const slice = values.slice(start, end).filter((value) => value !== null && value !== undefined);
+    if (!slice.length) return null;
+    return slice.reduce((sum, value) => sum + Number(value), 0) / slice.length;
+  });
+}
+
+function candlePrice(candle) {
+  return candle.median || candle.vwap || candle.close;
 }
 
 function escapeHtml(value) {
@@ -270,10 +307,13 @@ function renderTrending(rows) {
 
 function drawChart(candles) {
   const canvas = $("chart");
+  const tooltip = $("chart-tooltip");
   const rect = canvas.getBoundingClientRect();
   const dpr = window.devicePixelRatio || 1;
   canvas.width = Math.max(1, Math.floor(rect.width * dpr));
   canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+  state.currentCandles = candles;
+  state.chartPoints = [];
 
   const ctx = canvas.getContext("2d");
   ctx.scale(dpr, dpr);
@@ -281,27 +321,42 @@ function drawChart(candles) {
   ctx.fillStyle = "#101411";
   ctx.fillRect(0, 0, rect.width, rect.height);
 
-  const prices = candles.map((c) => c.median || c.vwap || c.close).filter((v) => v !== null);
-  if (!prices.length) {
+  const mode = state.chartMode;
+  const rawValues = candles.map((c) => {
+    if (mode === "items") return Number(c.units || 0);
+    if (mode === "money") return Number(c.volume || 0);
+    return candlePrice(c);
+  });
+  const values = rawValues.filter((v) => v !== null && v !== undefined && !Number.isNaN(Number(v)));
+  if (!values.length) {
     ctx.fillStyle = "#a5afa9";
     ctx.fillText("No candles yet", 16, 28);
+    if (tooltip) tooltip.classList.remove("open");
     return;
   }
 
-  const pad = { left: 58, right: 18, top: 18, bottom: 34 };
+  const pad = { left: 66, right: 18, top: 24, bottom: 48 };
   const width = rect.width - pad.left - pad.right;
   const height = rect.height - pad.top - pad.bottom;
-  const sorted = [...prices].sort((a, b) => a - b);
-  const lowIndex = Math.floor(sorted.length * 0.05);
-  const highIndex = Math.max(lowIndex, Math.ceil(sorted.length * 0.95) - 1);
-  let min = sorted[lowIndex];
+  const sorted = [...values].sort((a, b) => a - b);
+  const lowIndex = mode === "price" ? Math.floor(sorted.length * 0.05) : 0;
+  const highIndex = mode === "price" ? Math.max(lowIndex, Math.ceil(sorted.length * 0.95) - 1) : sorted.length - 1;
+  let min = mode === "price" ? sorted[lowIndex] : 0;
   let max = sorted[highIndex];
-  const excluded = prices.filter((price) => price < min || price > max).length;
+  const excluded = mode === "price" ? values.filter((value) => value < min || value > max).length : 0;
   if (min === max) {
-    min = Math.min(...prices);
-    max = Math.max(...prices);
+    min = Math.min(...values, 0);
+    max = Math.max(...values, 1);
   }
   const span = max - min || 1;
+  const chartValueLabel = mode === "items" ? "ITEMS SOLD" : mode === "money" ? "MONEY SPENT" : "PRICE";
+  const formatChartValue = (value) => mode === "items" ? fmtNumber(value) : fmtMoney(value);
+  const pointFor = (value, index) => {
+    const x = pad.left + (width * index) / Math.max(1, candles.length - 1);
+    const clamped = Math.max(min, Math.min(max, Number(value)));
+    const y = pad.top + height - ((clamped - min) / span) * height;
+    return { x, y };
+  };
 
   ctx.strokeStyle = "#28332d";
   ctx.lineWidth = 1;
@@ -313,26 +368,41 @@ function drawChart(candles) {
     ctx.stroke();
   }
 
+  if (mode === "price") {
+    ctx.fillStyle = "rgba(165, 175, 169, 0.18)";
+    candles.forEach((candle, index) => {
+      [candle.low, candle.high].forEach((raw) => {
+        if (raw === null || raw === undefined) return;
+        const point = pointFor(raw, index);
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    });
+  }
+
+  const lineValues = mode === "price" ? rollingValues(rawValues, 9) : rawValues;
   const gradient = ctx.createLinearGradient(pad.left, 0, rect.width - pad.right, 0);
   gradient.addColorStop(0, "#65a8ff");
   gradient.addColorStop(1, "#4ee08d");
   ctx.strokeStyle = gradient;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = mode === "price" ? 3 : 2;
   ctx.beginPath();
-  prices.forEach((price, index) => {
-    const x = pad.left + (width * index) / Math.max(1, prices.length - 1);
-    const clamped = Math.max(min, Math.min(max, price));
-    const y = pad.top + height - ((clamped - min) / span) * height;
-    if (index === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
+  let hasLine = false;
+  lineValues.forEach((value, index) => {
+    if (value === null || value === undefined) return;
+    const point = pointFor(value, index);
+    if (!hasLine) ctx.moveTo(point.x, point.y);
+    else ctx.lineTo(point.x, point.y);
+    hasLine = true;
   });
-  ctx.stroke();
+  if (hasLine) ctx.stroke();
 
   ctx.fillStyle = "#a5afa9";
   ctx.font = "12px system-ui";
-  ctx.fillText("PRICE", pad.left, pad.top - 4);
-  ctx.fillText(fmtMoney(max), 10, pad.top + 5);
-  ctx.fillText(fmtMoney(min), 10, rect.height - pad.bottom);
+  ctx.fillText(chartValueLabel, pad.left, pad.top - 8);
+  ctx.fillText(formatChartValue(max), 10, pad.top + 5);
+  ctx.fillText(formatChartValue(min), 10, rect.height - pad.bottom);
   if (excluded) {
     ctx.fillStyle = "#f2bd55";
     ctx.fillText(`${excluded} unusual points clipped`, pad.left, pad.top + 16);
@@ -342,15 +412,23 @@ function drawChart(candles) {
   const maxVol = Math.max(...volumes, 1);
   ctx.fillStyle = "#a5afa9";
   ctx.fillText("ITEMS SOLD", pad.left, rect.height - 8);
-  ctx.fillStyle = "rgba(245, 189, 79, 0.25)";
+  ctx.fillStyle = mode === "items" ? "rgba(245, 189, 79, 0.45)" : "rgba(245, 189, 79, 0.22)";
   volumes.forEach((vol, index) => {
     const x = pad.left + (width * index) / Math.max(1, volumes.length - 1);
-    const h = (vol / maxVol) * 42;
+    const h = (vol / maxVol) * 52;
     ctx.fillRect(x, rect.height - pad.bottom - h, Math.max(1, width / volumes.length - 1), h);
+  });
+
+  state.chartPoints = candles.map((candle, index) => {
+    const value = rawValues[index];
+    const point = pointFor(value ?? 0, index);
+    return { ...point, candle, value };
   });
 }
 
 function renderItemDetails(item) {
+  state.currentItem = item;
+  $("breadcrumbs").innerHTML = `<a href="/">Market</a><span>›</span><span>${escapeHtml(itemLabel(item))}</span>`;
   $("detail-title").innerHTML = `${itemIcon(item, "large")}<span>${escapeHtml(itemLabel(item))}</span>`;
   $("detail-subtitle").textContent = item.uses?.summary || "Live market data from recent DonutSMP auction sales.";
   $("detail-item-id").textContent = "";
@@ -388,26 +466,100 @@ function renderItemDetails(item) {
     </div>
   `).join("");
 
+  const advanced = [
+    ["1h Price", fmtMoney(item.sold_median_1h)],
+    ["7d Price", fmtMoney(item.sold_median_7d)],
+    ["Price Change", fmtPct(item.change_pct)],
+    ["Units Sold Today", fmtNumber(item.units_sold_24h)],
+    ["Price Score", fmtNumber(item.liquidity_score, 0)],
+    ["Average Listing", fmtMoney(item.median_listing)],
+  ];
+  $("advanced-stats").innerHTML = advanced.map(([label, value]) => `
+    <div>
+      <span>${label}</span>
+      <strong>${value}</strong>
+    </div>
+  `).join("");
+
   const crafts = item.uses?.crafting || [];
   renderCraftingUses(crafts, 0);
 
-  $("recent-sales").innerHTML = (item.recent_sales || []).length ? item.recent_sales.map((sale) => `
-    <div class="compact-row">
-      <div class="item-cell">
-        ${itemIcon(item, "tiny")}
-        <div><strong>${fmtNumber(sale.quantity)} sold for ${fmtMoney(sale.price_each)} each</strong><span>${fmtMoney(sale.total_price)} total · ${timeAgo(sale.sold_at_ms)}</span></div>
-      </div>
+  $("recent-sales").innerHTML = (item.recent_sales || []).length ? `
+    <div class="sales-table">
+      <div class="sales-head"><span>Amount</span><span>Each</span><span>Total</span><span>Sold</span></div>
+      ${item.recent_sales.map((sale) => `
+        <div class="sales-row">
+          <span>${itemIcon(item, "tiny")}${fmtNumber(sale.quantity)}</span>
+          <strong>${fmtMoney(sale.price_each)}</strong>
+          <strong>${fmtMoney(sale.total_price)}</strong>
+          <span>${timeAgo(sale.sold_at_ms)}</span>
+        </div>
+      `).join("")}
     </div>
-  `).join("") : `<div class="empty-note">No recent sales captured.</div>`;
+  ` : `<div class="empty-note">No recent sales captured.</div>`;
 
-  $("current-listings").innerHTML = (item.current_listings || []).length ? item.current_listings.map((listing) => `
-    <div class="compact-row">
-      <div class="item-cell">
-        ${itemIcon(item, "tiny")}
-        <div><strong>${fmtMoney(listing.price_each)} each × ${fmtNumber(listing.quantity)}</strong><span>${fmtMoney(listing.total_price)} total · ${fmtDurationMs(listing.time_left)} · last seen ${timeAgo(Date.parse(listing.snapshot_at))}</span></div>
+  renderListings(item);
+}
+
+function groupedListings(listings) {
+  const groups = new Map();
+  listings.forEach((listing) => {
+    const key = Number(listing.price_each || 0).toFixed(2);
+    const current = groups.get(key) || {
+      price_each: Number(listing.price_each || 0),
+      quantity: 0,
+      total_price: 0,
+      count: 0,
+      snapshot_at: listing.snapshot_at,
+      time_left: listing.time_left,
+    };
+    current.quantity += Number(listing.quantity || 0);
+    current.total_price += Number(listing.total_price || 0);
+    current.count += 1;
+    if (Date.parse(listing.snapshot_at) > Date.parse(current.snapshot_at || 0)) current.snapshot_at = listing.snapshot_at;
+    if (listing.time_left !== null && listing.time_left !== undefined) {
+      current.time_left = current.time_left === null || current.time_left === undefined
+        ? listing.time_left
+        : Math.min(current.time_left, listing.time_left);
+    }
+    groups.set(key, current);
+  });
+  return [...groups.values()].sort((a, b) => a.price_each - b.price_each);
+}
+
+function renderListings(item) {
+  const listings = item.current_listings || [];
+  if (!listings.length) {
+    $("listing-depth").innerHTML = "";
+    $("current-listings").innerHTML = `<div class="empty-note">No listings seen${item.listing_observed_at ? ` in latest scan` : ""}.</div>`;
+    return;
+  }
+  const groups = groupedListings(listings);
+  const maxQuantity = Math.max(...groups.map((group) => group.quantity), 1);
+  $("listing-depth").innerHTML = `
+    <div class="depth-title">Price Levels</div>
+    ${groups.slice(0, 8).map((group) => `
+      <div class="depth-row">
+        <span>${fmtMoney(group.price_each)}</span>
+        <div><i style="width:${Math.max(6, (group.quantity / maxQuantity) * 100)}%"></i></div>
+        <strong>${fmtNumber(group.quantity)} listed</strong>
       </div>
-    </div>
-  `).join("") : `<div class="empty-note">No listings seen${item.listing_observed_at ? ` in latest scan` : ""}.</div>`;
+    `).join("")}
+  `;
+  $("current-listings").innerHTML = groups.slice(0, 12).map((group) => {
+    const seen = freshness(group.snapshot_at);
+    return `
+      <div class="compact-row listing-row">
+        <div class="item-cell">
+          ${itemIcon(item, "tiny")}
+          <div>
+            <strong>${fmtMoney(group.price_each)} each × ${fmtNumber(group.quantity)}</strong>
+            <span>${fmtMoney(group.total_price)} total · ${group.count} listing${group.count === 1 ? "" : "s"} · ${fmtDurationMs(group.time_left)} · <em class="freshness ${seen.klass}">${seen.label}</em></span>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
 }
 
 function recipeDetail(recipe) {
@@ -514,6 +666,38 @@ function navigateToItem(itemKey) {
   selectItem(itemKey, { updateUrl: true, scroll: true });
 }
 
+function showChartTooltip(event) {
+  const tooltip = $("chart-tooltip");
+  const canvas = $("chart");
+  if (!tooltip || !state.chartPoints.length) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const nearest = state.chartPoints.reduce((best, point) => (
+    Math.abs(point.x - x) < Math.abs(best.x - x) ? point : best
+  ), state.chartPoints[0]);
+  if (!nearest || Math.abs(nearest.x - x) > 28) {
+    tooltip.classList.remove("open");
+    return;
+  }
+  const candle = nearest.candle;
+  const valueLabel = state.chartMode === "items" ? "Items sold" : state.chartMode === "money" ? "Money spent" : "Usual price";
+  const value = state.chartMode === "items" ? fmtNumber(nearest.value) : fmtMoney(nearest.value);
+  tooltip.innerHTML = `
+    <strong>${fmtClock(candle.minute_ms)}</strong>
+    <span>${valueLabel}: ${value}</span>
+    <span>Sales: ${fmtNumber(candle.transactions)}</span>
+    <span>Items: ${fmtNumber(candle.units)}</span>
+    <span>Spent: ${fmtMoney(candle.volume)}</span>
+  `;
+  tooltip.style.left = `${Math.min(rect.width - 180, Math.max(8, nearest.x + 12))}px`;
+  tooltip.style.top = `${Math.max(8, nearest.y - 48)}px`;
+  tooltip.classList.add("open");
+}
+
+function hideChartTooltip() {
+  $("chart-tooltip")?.classList.remove("open");
+}
+
 function currentPathItemKey() {
   if (!window.location.pathname.startsWith("/item/")) return "";
   return decodeURIComponent(window.location.pathname.slice("/item/".length));
@@ -599,6 +783,18 @@ $("timeframes").querySelectorAll("button").forEach((button) => {
     if (state.selectedItemKey) selectItem(state.selectedItemKey, { updateUrl: false, scroll: false });
   });
 });
+
+$("chart-modes").querySelectorAll("button").forEach((button) => {
+  button.addEventListener("click", () => {
+    $("chart-modes").querySelectorAll("button").forEach((b) => b.classList.remove("active"));
+    button.classList.add("active");
+    state.chartMode = button.dataset.mode;
+    drawChart(state.currentCandles || []);
+  });
+});
+
+$("chart").addEventListener("mousemove", showChartTooltip);
+$("chart").addEventListener("mouseleave", hideChartTooltip);
 
 $("search").addEventListener("input", (event) => {
   clearTimeout(state.searchTimer);

@@ -1,0 +1,26 @@
+Log 44
+
+Implemented the remaining suggestions from suggestions.txt.
+
+Changes made:
+- Added top navigation links for Market, Trending, Good Buys, Crafting, and Pro.
+- Added item-page breadcrumbs.
+- Added chart mode controls for Price, Items Sold, and Money Spent.
+- Reworked the chart to show a smoother typical-price line with faint raw high/low points in price mode.
+- Added chart hover tooltips with time, value, sales, items sold, and money spent.
+- Added advanced item stats under "More Numbers".
+- Increased current listing payload from 12 to 48 rows per item so listing grouping has enough data.
+- Grouped current listings by price, showing total quantity and listing count per price.
+- Added freshness indicators for listings using green/yellow/gray "Seen ..." markers.
+- Added price-level bars for current listings.
+- Changed recent sales into a scannable table with Amount, Each, Total, and Sold columns.
+- Expanded the DonutDex Pro panel with clearer benefit chips.
+
+Verification:
+- Ran node --check dashboard/static/app.js successfully.
+- Ran python3 -m py_compile dashboard/server.py successfully.
+- Restarted donut-market-dashboard successfully.
+- Confirmed the dashboard service is active.
+- Confirmed the live homepage serves chart mode controls, chart tooltip, advanced stats, listing depth, and /app.js?v=43.
+- Confirmed the live app script contains the new chart tooltip, grouped listing, sales table, and listing depth renderers.
+- Confirmed /api/item for leather still returns item, crafting, and listing data.

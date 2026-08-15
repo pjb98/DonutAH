@@ -12,6 +12,13 @@
         <div class="brand">DonutDex</div>
         <h1>DonutSMP Market Tracker</h1>
         <p>Live prices, sales, money spent, and auction deals from completed sales.</p>
+        <nav class="top-nav" aria-label="DonutDex sections">
+          <a href="/">Market</a>
+          <a href="#trending">Trending</a>
+          <a href="#opportunities">Good Buys</a>
+          <a href="#crafting-uses">Crafting</a>
+          <a href="#pro">Pro</a>
+        </nav>
       </div>
       <div class="search-box">
         <label for="search">Search the market</label>
@@ -87,14 +94,21 @@
                 <button data-range="30d">30D</button>
                 <button data-range="all">ALL</button>
               </div>
+              <div class="chart-modes" id="chart-modes">
+                <button data-mode="price" class="active">Price</button>
+                <button data-mode="items">Items Sold</button>
+                <button data-mode="money">Money Spent</button>
+              </div>
             </div>
           </div>
           <canvas id="chart" height="300"></canvas>
+          <div id="chart-tooltip" class="chart-tooltip"></div>
         </div>
 
         <div class="panel item-detail-panel" id="item-detail-panel">
           <div class="panel-head">
             <div>
+              <div class="breadcrumbs" id="breadcrumbs">Market</div>
               <h2 id="detail-title">Item Details</h2>
               <div class="subtle" id="detail-subtitle">Search or select an item to view market context.</div>
             </div>
@@ -120,9 +134,16 @@
             <div class="detail-metrics" id="detail-metrics"></div>
             <h3>What Can I Make?</h3>
             <div id="crafting-uses" class="uses-list"></div>
-            <div class="pro-panel">
+            <h3>More Numbers</h3>
+            <div id="advanced-stats" class="advanced-stats"></div>
+            <div class="pro-panel" id="pro">
               <strong>DonutDex Pro</strong>
-              <span>Price alerts, deeper item stats, and deal finding for this item.</span>
+              <span>Get price alerts, find good buys faster, and watch your favorite items.</span>
+              <div class="pro-actions">
+                <span>Alert me at my price</span>
+                <span>Find good buys</span>
+                <span>Track this item</span>
+              </div>
             </div>
           </div>
         </div>
@@ -135,6 +156,7 @@
             </div>
             <div>
               <div class="panel-head compact"><h2>Listings Now</h2></div>
+              <div id="listing-depth" class="listing-depth"></div>
               <div id="current-listings" class="compact-list"></div>
             </div>
           </div>
@@ -150,6 +172,6 @@
       </section>
     </main>
 
-    <script src="/app.js?v=42"></script>
+    <script src="/app.js?v=43"></script>
   </body>
 </html>

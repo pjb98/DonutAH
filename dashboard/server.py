@@ -487,7 +487,7 @@ def recent_sales(conn, item_key, limit=12):
     )
 
 
-def current_listings(conn, item_key, limit=12):
+def current_listings(conn, item_key, limit=48):
     return rows(
         conn,
         """
