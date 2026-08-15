@@ -1,0 +1,54 @@
+Donut Market Work Log 16
+Date: 2026-08-15
+
+Summary
+Redesigned the dashboard from an internal monitoring view into a player-facing market homepage.
+
+Changes
+- Rebranded the page as DonutDex.
+- Added a prominent market search box.
+- Added /api/search.
+- Replaced system-health top cards with 24h market cards:
+  - Market Volume
+  - Units Sold
+  - Transactions
+  - Market Activity
+- Moved operational stats into a smaller Status panel.
+- Changed the Market table columns to:
+  - Item
+  - Price
+  - 24h movement
+  - Sales
+  - Volume
+  - Lowest Ask
+- Added market table tabs:
+  - Most Traded
+  - Top Volume
+  - Gainers
+  - Losers
+  - Most Liquid
+- Renamed Underpriced to Potential Deals.
+- Added Trending panel.
+- Added item variant warnings for heterogeneous items such as Filled Map, Enchanted Book, potions, custom heads, and shulker boxes.
+- Improved item detail chart header with price, movement, sales, and volume.
+
+Backend changes
+- /api/summary now returns 24h market volume, units, transactions, activity level, and transaction rate.
+- /api/markets now supports gainers and losers sorting.
+- /api/markets, /api/opportunities, /api/movers, /api/search, and /api/item now include variant_note where relevant.
+- /api/item now includes change_pct.
+
+Verification
+- Python syntax check passed for dashboard/server.py.
+- JavaScript syntax check passed for dashboard/static/app.js.
+- Restarted donut-market-dashboard.service.
+- Dashboard service is active.
+- HTML endpoint returned the redesigned DonutDex page.
+- /api/summary returned 24h market metrics.
+- /api/search?q=diamond returned item rows.
+- /api/markets?sort=gainers returned rows with change_pct and variant_note.
+- /api/opportunities returned Potential Deals rows.
+
+Performance note
+- /api/opportunities can be slower than ideal on the current SQLite dataset.
+- Future iteration should add indexes or a precomputed deals table if this becomes a common high-traffic endpoint.

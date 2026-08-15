@@ -35,8 +35,90 @@ def clamp_limit(value, default=25, maximum=100):
         return default
 
 
+def movement_expr():
+    return """
+        CASE
+            WHEN sold_median_7d IS NOT NULL AND sold_median_7d > 0 AND sold_median_24h IS NOT NULL
+            THEN ROUND((sold_median_24h - sold_median_7d) * 100.0 / sold_median_7d, 2)
+            ELSE NULL
+        END
+    """
+
+
+def variant_note(item_id):
+    heterogeneous = {
+        "minecraft:enchanted_book": "Many enchantment variants",
+        "minecraft:filled_map": "Map variants are mixed",
+        "minecraft:potion": "Potion variants are mixed",
+        "minecraft:splash_potion": "Potion variants are mixed",
+        "minecraft:lingering_potion": "Potion variants are mixed",
+        "minecraft:tipped_arrow": "Arrow variants are mixed",
+        "minecraft:player_head": "Custom heads are mixed",
+        "minecraft:written_book": "Book variants are mixed",
+    }
+    if item_id and item_id.endswith("shulker_box"):
+        return "Contents may vary"
+    return heterogeneous.get(item_id)
+
+
+def decorate_items(items):
+    for item in items:
+        item["variant_note"] = variant_note(item.get("item_id"))
+    return items
+
+
 def summary(conn):
+    now_ms = int(time.time() * 1000)
+    day_ms = 24 * 60 * 60 * 1000
+    last_24h = one(
+        conn,
+        """
+        SELECT
+            COUNT(*) AS transactions,
+            COALESCE(SUM(quantity), 0) AS units,
+            COALESCE(SUM(total_price), 0) AS volume
+        FROM auction_sales
+        WHERE sold_at_ms >= ?
+        """,
+        (now_ms - day_ms,),
+    )
+    previous_24h = one(
+        conn,
+        """
+        SELECT
+            COUNT(*) AS transactions,
+            COALESCE(SUM(quantity), 0) AS units,
+            COALESCE(SUM(total_price), 0) AS volume
+        FROM auction_sales
+        WHERE sold_at_ms >= ?
+          AND sold_at_ms < ?
+        """,
+        (now_ms - 2 * day_ms, now_ms - day_ms),
+    )
+    prev_volume = previous_24h["volume"] or 0
+    volume_change = None
+    if prev_volume > 0:
+        volume_change = round((last_24h["volume"] - prev_volume) * 100.0 / prev_volume, 2)
+
+    tx_per_minute = round((last_24h["transactions"] or 0) / (24 * 60), 2)
+    if tx_per_minute >= 100:
+        activity = "Extreme"
+    elif tx_per_minute >= 25:
+        activity = "High"
+    elif tx_per_minute >= 5:
+        activity = "Active"
+    else:
+        activity = "Quiet"
+
     return {
+        "last_24h": {
+            "transactions": last_24h["transactions"],
+            "units": last_24h["units"],
+            "volume": last_24h["volume"],
+            "volume_change_pct": volume_change,
+            "tx_per_minute": tx_per_minute,
+            "activity": activity,
+        },
         "sales": one(conn, "SELECT COUNT(*) AS value FROM auction_sales")["value"],
         "listings": one(conn, "SELECT COUNT(*) AS value FROM auction_listing_snapshots")["value"],
         "items": one(conn, "SELECT COUNT(*) AS value FROM market_stats")["value"],
@@ -54,11 +136,15 @@ def top_markets(conn, params):
         "units": "units_sold_24h DESC, sales_count_24h DESC",
         "volume": "volume_24h DESC, sales_count_24h DESC",
         "liquidity": "liquidity_score DESC, sales_count_24h DESC",
+        "gainers": "change_pct DESC, sales_count_24h DESC",
+        "losers": "change_pct ASC, sales_count_24h DESC",
     }
     order_by = order_map.get(sort, order_map["sales"])
-    return rows(
+    result = rows(
         conn,
         f"""
+        SELECT *
+        FROM (
         SELECT
             item_key,
             COALESCE(base_item_key, item_id) AS base_item_key,
@@ -75,21 +161,24 @@ def top_markets(conn, params):
             listing_count,
             listed_quantity,
             market_value,
-            liquidity_score
+            liquidity_score,
+            {movement_expr()} AS change_pct
         FROM market_stats
         WHERE sales_count_24h > 0
+        )
         ORDER BY {order_by}
         LIMIT ?
         """,
         (limit,),
     )
+    return decorate_items(result)
 
 
 def movers(conn, params):
     limit = clamp_limit(params.get("limit", ["20"])[0])
     direction = params.get("direction", ["gainers"])[0]
     order = "change_pct DESC" if direction == "gainers" else "change_pct ASC"
-    return rows(
+    result = rows(
         conn,
         f"""
         SELECT *
@@ -115,12 +204,13 @@ def movers(conn, params):
         """,
         (limit,),
     )
+    return decorate_items(result)
 
 
 def opportunities(conn, params):
     limit = clamp_limit(params.get("limit", ["25"])[0])
     min_sales = clamp_limit(params.get("min_sales", ["5"])[0], default=5, maximum=1000)
-    return rows(
+    result = rows(
         conn,
         """
         SELECT *
@@ -152,6 +242,38 @@ def opportunities(conn, params):
         """,
         (min_sales, limit),
     )
+    return decorate_items(result)
+
+
+def search(conn, params):
+    q = params.get("q", [""])[0].strip()
+    limit = clamp_limit(params.get("limit", ["12"])[0], default=12, maximum=30)
+    if not q:
+        return []
+    pattern = f"%{q.lower()}%"
+    result = rows(
+        conn,
+        f"""
+        SELECT
+            item_key,
+            COALESCE(base_item_key, item_id) AS base_item_key,
+            item_id,
+            display_name,
+            sold_median_24h,
+            sold_median_7d,
+            lowest_listing,
+            sales_count_24h,
+            volume_24h,
+            {movement_expr()} AS change_pct
+        FROM market_stats
+        WHERE lower(COALESCE(display_name, '')) LIKE ?
+           OR lower(item_id) LIKE ?
+        ORDER BY sales_count_24h DESC, volume_24h DESC
+        LIMIT ?
+        """,
+        (pattern, pattern, limit),
+    )
+    return decorate_items(result)
 
 
 def candles(conn, params):
@@ -189,7 +311,13 @@ def item_detail(conn, params):
     stats = one(
         conn,
         """
-        SELECT *
+        SELECT
+            *,
+            CASE
+                WHEN sold_median_7d IS NOT NULL AND sold_median_7d > 0 AND sold_median_24h IS NOT NULL
+                THEN ROUND((sold_median_24h - sold_median_7d) * 100.0 / sold_median_7d, 2)
+                ELSE NULL
+            END AS change_pct
         FROM market_stats
         WHERE item_key = ?
         """,
@@ -197,6 +325,7 @@ def item_detail(conn, params):
     )
     if not stats:
         return None
+    stats["variant_note"] = variant_note(stats.get("item_id"))
     stats["candles"] = candles(conn, {"item_key": [item_key], "limit": [params.get("limit", ["240"])[0]]})
     return stats
 
@@ -229,6 +358,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                     payload = movers(conn, params)
                 elif parsed.path == "/api/opportunities":
                     payload = opportunities(conn, params)
+                elif parsed.path == "/api/search":
+                    payload = search(conn, params)
                 elif parsed.path == "/api/candles":
                     payload = candles(conn, params)
                 elif parsed.path == "/api/item":
