@@ -1,0 +1,31 @@
+Donut Market Work Log 13
+Date: 2026-08-15
+
+Summary
+Checked collector health after the hot-path performance fix.
+
+Service status
+- donut-market.service is active and running.
+- Uptime since restart: about 1 hour 50 minutes.
+- Collector command:
+  /usr/bin/python3 /root/donut-market/collector.py --db /root/donut-market/donut_market.sqlite --service --transaction-pages 10 --tx-interval 5 --listing-pages-per-cycle 8
+
+Recent cycle behavior
+- Recent cycles continue to fetch:
+  - tx_seen=1000
+  - listing_seen=352
+- Recent cycle_sec values are mostly between about 2.2 and 4.6 seconds.
+- One recent cycle took 5.90 seconds.
+- No recent rate-limit errors were observed in the checked logs.
+
+Database counts
+- sales: 137359
+- listings: 226776
+- candles_1m: 49241
+- market_stats: 10561
+- next_listing_page: 345
+- latest_sale_utc: 2026-08-15 00:43:16
+
+Conclusion
+- Collector is active and keeping close to the intended 5-second transaction polling cadence.
+- Data volume is growing steadily.
