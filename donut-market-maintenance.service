@@ -1,0 +1,8 @@
+[Unit]
+Description=DonutSMP market database maintenance
+After=donut-market.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/donut-market
+ExecStart=/usr/bin/python3 /root/donut-market/maintenance.py --db /root/donut-market/donut_market.sqlite --listing-retention-hours 48 --sales-retention-days 30

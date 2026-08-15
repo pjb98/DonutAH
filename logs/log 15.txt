@@ -1,0 +1,47 @@
+Donut Market Work Log 15
+Date: 2026-08-15
+
+Summary
+Added long-term database maintenance tooling to reduce disk growth.
+
+Files added
+- /root/donut-market/maintenance.py
+- /root/donut-market/donut-market-maintenance.service
+- /root/donut-market/donut-market-maintenance.timer
+- /root/donut-market/donut-market-vacuum.service
+- /root/donut-market/donut-market-vacuum.timer
+
+Maintenance policy
+- Keep active listing snapshots for 48 hours.
+- Keep raw completed sales for 30 days.
+- Keep candles and current market_stats.
+- Run WAL checkpointing after cleanup.
+- Run VACUUM weekly, not every day.
+
+Reasoning
+- Listing snapshots are the highest-growth low-value table.
+- Completed sales are more valuable, so they have a longer retention window.
+- Candles are compact and useful for long-term charting.
+- VACUUM rewrites the SQLite database, so it should be infrequent.
+
+Systemd setup
+- Installed maintenance and vacuum service/timer units into /etc/systemd/system.
+- Enabled and started donut-market-maintenance.timer.
+- Enabled and started donut-market-vacuum.timer.
+
+Timer schedule
+- Daily maintenance next scheduled around 03:20 local time, with randomized delay.
+- Weekly vacuum next scheduled Sunday around 04:10 local time, with randomized delay.
+
+Manual verification
+- Dry-run succeeded and found zero eligible rows under the current retention policy.
+- First non-dry-run maintenance attempt failed with sqlite3.OperationalError: database is locked.
+- Patched maintenance.py to:
+  - skip DELETE statements when zero rows are eligible,
+  - retry locked DELETE/VACUUM operations,
+  - tolerate a busy WAL checkpoint by logging and continuing.
+- Second non-dry-run maintenance attempt succeeded.
+- It deleted no rows because no data was old enough yet.
+- It checkpointed/truncated the WAL successfully:
+  - WAL before: about 12.99 MB
+  - WAL after: 0 MB

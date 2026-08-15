@@ -1,0 +1,10 @@
+[Unit]
+Description=Run DonutSMP market database vacuum weekly
+
+[Timer]
+OnCalendar=Sun 04:10:00
+Persistent=true
+RandomizedDelaySec=20m
+
+[Install]
+WantedBy=timers.target
