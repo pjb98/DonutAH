@@ -612,7 +612,7 @@ h3 {
 
 .recipe-math {
   display: grid;
-  grid-template-columns: repeat(2, minmax(130px, 1fr));
+  grid-template-columns: repeat(4, minmax(130px, 1fr));
   gap: 8px;
   margin-bottom: 10px;
 }

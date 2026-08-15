@@ -386,6 +386,8 @@ def enrich_recipe_economics(conn, uses):
         )
         result["item_key"] = result_price.get("item_key")
         result["max_stack"] = result_price.get("max_stack", max_stack_size(result.get("item_id")))
+        result["sales_count_24h"] = result_price.get("sales_count_24h")
+        result["volume_24h"] = result_price.get("volume_24h")
 
         ingredients = []
         known_cost = 0

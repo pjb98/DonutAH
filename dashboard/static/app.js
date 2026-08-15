@@ -319,7 +319,7 @@ function recipeDetail(recipe) {
         </div>
         <div class="recipe-profit ${profitClass(recipe.profit)}">
           ${recipe.profit === null || recipe.profit === undefined ? "Unknown" : fmtMoney(recipe.profit)}
-          <span>${recipe.profit_pct === null || recipe.profit_pct === undefined ? "profit" : `${fmtPct(recipe.profit_pct)} profit`}</span>
+          <span>${recipe.profit_pct === null || recipe.profit_pct === undefined ? "Potential Profit" : `${fmtPct(recipe.profit_pct)} Potential Profit`}</span>
         </div>
       </div>
       <div class="recipe-math">
@@ -330,6 +330,14 @@ function recipeDetail(recipe) {
         <div>
           <span>Ingredient Cost</span>
           <strong>${fmtMoney(recipe.ingredient_cost)}</strong>
+        </div>
+        <div>
+          <span>Result 24h Sales</span>
+          <strong>${fmtNumber(recipe.result.sales_count_24h)}</strong>
+        </div>
+        <div>
+          <span>Result 24h Volume</span>
+          <strong>${fmtMoney(recipe.result.volume_24h)}</strong>
         </div>
       </div>
       <div class="ingredient-list">
@@ -357,7 +365,8 @@ function renderCraftingUses(crafts, selectedIndex) {
       ${crafts.map((recipe, index) => `
         <button class="craft-result ${index === active ? "active" : ""}" data-recipe-index="${index}">
           <strong>${recipe.result.name}</strong>
-          <span>${recipe.profit === null || recipe.profit === undefined ? "Pricing incomplete" : `${fmtMoney(recipe.profit)} margin`}</span>
+          <span>${recipe.profit === null || recipe.profit === undefined ? "Pricing incomplete" : `${fmtMoney(recipe.profit)} potential profit`}</span>
+          <span>${fmtNumber(recipe.result.sales_count_24h)} sales · ${fmtMoney(recipe.result.volume_24h)} volume</span>
         </button>
       `).join("")}
     </div>

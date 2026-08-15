@@ -1,0 +1,20 @@
+Log 26 - Crafting potential profit and result volume
+
+Date: 2026-08-15
+
+Changes made:
+- Renamed recipe selector "margin" wording to "potential profit".
+- Renamed detailed recipe profit label to "Potential Profit".
+- Added crafted result liquidity context to recipe data:
+  - 24h sales count
+  - 24h volume
+- Added result 24h sales and result 24h volume to the selected recipe detail card.
+- Added sales and volume summary text to each clickable crafting-use selector.
+
+Verification:
+- python3 -m py_compile dashboard/server.py passed.
+- node --check dashboard/static/app.js passed.
+- Restarted donut-market-dashboard.service successfully.
+- Verified Leather recipe outputs include sales_count_24h and volume_24h in the live API.
+- Verified /item/minecraft%3Aleather returns HTTP 200.
+- Confirmed donut-market-dashboard.service is active.
