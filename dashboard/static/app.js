@@ -20,6 +20,10 @@ function fmtMoney(value) {
   return `$${fmtNumber(n, 2)}`;
 }
 
+function fmtAsk(value) {
+  return value === null || value === undefined ? "No active asks" : fmtMoney(value);
+}
+
 function fmtPct(value) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return "-";
   const n = Number(value);
@@ -107,7 +111,7 @@ function renderMarkets(rows) {
       <td class="${pctClass(row.change_pct)}">${fmtPct(row.change_pct)}</td>
       <td>${fmtNumber(row.sales_count_24h)}</td>
       <td>${fmtMoney(row.volume_24h)}</td>
-      <td>${fmtMoney(row.lowest_listing)}</td>
+      <td>${fmtAsk(row.lowest_listing)}</td>
     </tr>
   `).join("");
 
@@ -223,7 +227,9 @@ function renderItemDetails(item) {
   $("detail-metrics").innerHTML = [
     ["Price Each", fmtMoney(item.price_each || item.market_value || item.sold_median_24h)],
     [`Price / ${fmtNumber(item.max_stack || 64)} Stack`, fmtMoney(item.price_stack)],
-    ["Lowest Ask", fmtMoney(item.lowest_listing)],
+    ["Lowest Ask", fmtAsk(item.lowest_listing)],
+    ["Current Listings", fmtNumber(item.listing_count)],
+    ["Listed Quantity", fmtNumber(item.listed_quantity)],
     ["24h Median", fmtMoney(item.sold_median_24h)],
     ["24h Sales", fmtNumber(item.sales_count_24h)],
     ["24h Volume", fmtMoney(item.volume_24h)],
@@ -294,7 +300,7 @@ async function selectItem(itemKey, options = {}) {
   $("chart-title").textContent = itemLabel(item);
   $("chart-meta").textContent = `${fmtMoney(item.sold_median_24h || item.market_value)} · ${fmtPct(item.change_pct)} 24h vs 7d · ${fmtNumber(item.sales_count_24h)} sales · ${fmtMoney(item.volume_24h)} volume`;
   $("item-badges").innerHTML = [
-    item.lowest_listing ? `<span>Ask ${fmtMoney(item.lowest_listing)}</span>` : "",
+    `<span>${item.lowest_listing ? `Ask ${fmtMoney(item.lowest_listing)}` : "No active asks"}</span>`,
     item.variant_note ? `<span>${item.variant_note}</span>` : "",
   ].join("");
   renderItemDetails(item);

@@ -1,0 +1,24 @@
+Log 21 - Lowest ask empty-state display
+
+Date: 2026-08-15
+
+Finding:
+- Egg currently has no active listing in market_stats:
+  - lowest_listing is null
+  - listing_count is 0
+  - listed_quantity is 0
+- The previous UI displayed that like an empty/blank lowest ask, which was confusing.
+
+Changes made:
+- Added a dedicated ask formatter in the dashboard frontend.
+- Lowest Ask now shows "No active asks" when no current listing price exists.
+- The market table also uses the same no-active-ask display.
+- Item detail pages now include Current Listings and Listed Quantity metrics next to Lowest Ask.
+- The item badge now says "No active asks" instead of disappearing.
+
+Verification:
+- node --check dashboard/static/app.js passed.
+- Restarted donut-market-dashboard.service successfully.
+- Verified live Egg API still reports lowest_listing null and listing_count 0.
+- Verified the Egg item page route returns HTTP 200.
+- Confirmed donut-market-dashboard.service is active.
