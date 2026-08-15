@@ -1,0 +1,23 @@
+Log 46
+
+Stopped and archived the Solana wallet investigator project.
+
+Actions taken:
+- Stopped solana-wallet-investigator-watch.service.
+- Stopped solana-wallet-investigator-dashboard.service.
+- Disabled both services so they do not restart on boot.
+- Moved /root/solana-wallet-investigator to /root/archives/solana-wallet-investigator-2026-08-15.
+- Added ARCHIVED.txt inside the archived project explaining what was done.
+
+Verification:
+- Confirmed both Solana wallet investigator services are disabled.
+- Confirmed no solana-wallet-investigator / auto_utility_scan / uvicorn app.main processes remain.
+- Confirmed the original /root/solana-wallet-investigator path no longer exists.
+- Confirmed archived data is preserved, including data/utility_watch.sqlite at about 14G.
+- Confirmed donut-market.service is still active.
+- Confirmed donut-market-dashboard.service is still active.
+
+Notes:
+- This archive move preserved data and stopped CPU/RAM/database growth.
+- It did not free the 14G because the archive is still stored on the same disk.
+- Current root disk check after archive: 47G used, 26G free, 65% used.
