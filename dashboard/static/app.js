@@ -27,8 +27,8 @@ function fmtMoney(value) {
   return `$${fmtNumber(Math.round(n))}`;
 }
 
-function fmtAsk(value) {
-  return value === null || value === undefined ? "No active asks" : fmtMoney(value);
+function fmtListing(value) {
+  return value === null || value === undefined ? "No listings seen" : fmtMoney(value);
 }
 
 function plainPrice(value) {
@@ -226,7 +226,7 @@ function renderMarkets(rows) {
       <td class="${pctClass(row.change_pct)}">${fmtPct(row.change_pct)}</td>
       <td>${fmtNumber(row.sales_count_24h)}</td>
       <td>${fmtMoney(row.volume_24h)}</td>
-      <td>${fmtAsk(row.lowest_listing)}</td>
+      <td>${fmtListing(row.lowest_listing)}</td>
     </tr>
   `).join("");
 
@@ -243,7 +243,7 @@ function renderOpportunities(rows) {
   $("opportunities").innerHTML = rows.map((row) => `
     <div class="list-row" data-item-key="${row.item_key}">
       <div>
-        ${itemNameHtml(row, `Ask ${fmtMoney(row.lowest_listing)} · Fair ${fmtMoney(row.market_value)}`)}
+        ${itemNameHtml(row, `Listed ${fmtMoney(row.lowest_listing)} · Usual ${fmtMoney(row.market_value)}`)}
         ${variantBadge(row)}
       </div>
       <div class="gain">${fmtPct(row.discount_pct)}</div>
@@ -369,14 +369,14 @@ function renderItemDetails(item) {
   $("donut-says").innerHTML = `
     <strong>DonutDex Says</strong>
     <span>${itemLabel(item)} usually sells for around ${plainPrice(marketPrice)} each.</span>
-    <span>The cheapest current listing is ${fmtAsk(item.lowest_listing)}.</span>
+    <span>The cheapest current listing is ${fmtListing(item.lowest_listing)}.</span>
     <span>Want to sell quickly? Try around ${plainPrice(suggested.quick)}.</span>
     <span>${fmtNumber(item.sales_count_24h)} ${itemLabel(item)} sales were recorded today.</span>
   `;
 
   $("detail-metrics").innerHTML = [
     ["Typical Price", fmtMoney(item.sold_median_24h)],
-    ["Cheapest Listing", fmtAsk(item.lowest_listing)],
+    ["Cheapest Listing", fmtListing(item.lowest_listing)],
     ["Sold Today", fmtNumber(item.sales_count_24h)],
     ["Listings Now", fmtNumber(item.listing_count)],
     ["Items Listed", fmtNumber(item.listed_quantity)],
@@ -503,7 +503,7 @@ async function selectItem(itemKey, options = {}) {
   $("chart-title").textContent = itemLabel(item);
   $("chart-meta").textContent = `${fmtMoney(item.sold_median_24h || item.market_value)} · ${fmtPct(item.change_pct)} 24h vs 7d · ${fmtNumber(item.sales_count_24h)} sold · ${fmtMoney(item.volume_24h)} traded`;
   $("item-badges").innerHTML = [
-    `<span>${item.lowest_listing ? `Ask ${fmtMoney(item.lowest_listing)}` : "No active asks"}</span>`,
+    `<span>${item.lowest_listing ? `Cheapest ${fmtMoney(item.lowest_listing)}` : "No listings seen"}</span>`,
     item.variant_note ? `<span>${item.variant_note}</span>` : "",
   ].join("");
   renderItemDetails(item);

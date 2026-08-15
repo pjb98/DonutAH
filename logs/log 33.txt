@@ -1,0 +1,15 @@
+Log 33
+
+Removed remaining finance-style "Ask" wording from the public dashboard UI.
+
+Changes made:
+- Renamed the listing formatter from ask wording to listing wording.
+- Changed "No active asks" to "No listings seen".
+- Changed potential deal row text from "Ask / Fair" to "Listed / Usual".
+- Changed item chart badges from "Ask" to "Cheapest".
+
+Verification:
+- Ran node --check dashboard/static/app.js successfully.
+- Restarted donut-market-dashboard successfully.
+- Confirmed the dashboard service is active.
+- Confirmed the live app bundle no longer contains visible "Ask", "active asks", or "Fair" wording.
