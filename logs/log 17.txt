@@ -1,0 +1,50 @@
+Donut Market Work Log 17
+Date: 2026-08-15
+
+Summary
+Fixed slow or unreliable dashboard data loading after the DonutDex redesign.
+
+Problem
+- Dashboard data could load slowly or appear not to load.
+- Browser logs showed repeated API requests every refresh cycle.
+- Some clients were still requesting old frontend endpoints such as /api/movers, likely due to stale cached JavaScript.
+
+Findings
+- /api/summary was the slowest endpoint, around 1.4-1.5 seconds cold.
+- /api/markets was fast, around 0.09 seconds.
+- /api/opportunities was acceptable cold after retest, around 0.1-0.3 seconds, but still worth caching.
+- The frontend used Promise.all for all homepage data, so one slow endpoint delayed rendering everything.
+
+Changes
+- Added simple in-memory server-side response caching in dashboard/server.py.
+- Cache TTLs:
+  - summary: 10 seconds
+  - markets: 15 seconds
+  - movers: 15 seconds
+  - opportunities: 30 seconds
+  - search: 10 seconds
+  - candles: 30 seconds
+  - item detail: 15 seconds
+- Added Cache-Control: no-store for static assets so browsers fetch current app.js/styles.css.
+- Changed frontend loading so the main market table loads first.
+- Moved summary, opportunities, and trending into independent secondary refresh calls.
+- Reduced refresh pressure:
+  - main market refresh every 30 seconds
+  - secondary data refresh every 60 seconds
+
+Verification
+- Python syntax check passed for dashboard/server.py.
+- JavaScript syntax check passed for dashboard/static/app.js.
+- Dashboard service restarted and remained active.
+- /app.js now returns Cache-Control: no-store.
+- Endpoint timings after patch:
+  - summary cold: about 1.42 seconds
+  - summary warm: about 0.004 seconds
+  - markets cold: about 0.088 seconds
+  - markets warm: about 0.078 seconds
+  - opportunities cold: about 0.095 seconds
+  - opportunities warm: about 0.005 seconds
+
+Result
+- Repeated dashboard loads should be much faster.
+- The page should render the market table without waiting on slower secondary metrics.

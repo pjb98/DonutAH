@@ -10,6 +10,20 @@ from urllib.parse import parse_qs, urlparse
 
 ROOT = Path(__file__).resolve().parent
 STATIC_ROOT = ROOT / "static"
+CACHE = {}
+
+
+def cached(key, ttl_seconds, factory):
+    now = time.monotonic()
+    hit = CACHE.get(key)
+    if hit and hit["expires_at"] > now:
+        return hit["payload"]
+    payload = factory()
+    CACHE[key] = {
+        "expires_at": now + ttl_seconds,
+        "payload": payload,
+    }
+    return payload
 
 
 def connect(db_path):
@@ -346,24 +360,35 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             return
         super().do_GET()
 
+    def end_headers(self):
+        if not urlparse(self.path).path.startswith("/api/"):
+            self.send_header("Cache-Control", "no-store")
+        super().end_headers()
+
     def handle_api(self, parsed):
         params = parse_qs(parsed.query)
         try:
             with connect(self.db_path) as conn:
                 if parsed.path == "/api/summary":
-                    payload = summary(conn)
+                    payload = cached("summary", 10, lambda: summary(conn))
                 elif parsed.path == "/api/markets":
-                    payload = top_markets(conn, params)
+                    key = f"markets:{parsed.query}"
+                    payload = cached(key, 15, lambda: top_markets(conn, params))
                 elif parsed.path == "/api/movers":
-                    payload = movers(conn, params)
+                    key = f"movers:{parsed.query}"
+                    payload = cached(key, 15, lambda: movers(conn, params))
                 elif parsed.path == "/api/opportunities":
-                    payload = opportunities(conn, params)
+                    key = f"opportunities:{parsed.query}"
+                    payload = cached(key, 30, lambda: opportunities(conn, params))
                 elif parsed.path == "/api/search":
-                    payload = search(conn, params)
+                    key = f"search:{parsed.query}"
+                    payload = cached(key, 10, lambda: search(conn, params))
                 elif parsed.path == "/api/candles":
-                    payload = candles(conn, params)
+                    key = f"candles:{parsed.query}"
+                    payload = cached(key, 30, lambda: candles(conn, params))
                 elif parsed.path == "/api/item":
-                    payload = item_detail(conn, params)
+                    key = f"item:{parsed.query}"
+                    payload = cached(key, 15, lambda: item_detail(conn, params))
                 else:
                     self.send_json({"error": "not found"}, status=404)
                     return

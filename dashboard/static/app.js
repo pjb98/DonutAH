@@ -240,20 +240,25 @@ async function runSearch(query) {
 
 async function refresh() {
   try {
-    const [summary, markets, opps, trending] = await Promise.all([
-      api("/api/summary"),
-      api(`/api/markets?sort=${state.marketSort}&limit=35`),
-      api("/api/opportunities?limit=12&min_sales=5"),
-      api("/api/markets?sort=gainers&limit=12"),
-    ]);
-    renderPulse(summary);
+    const markets = await api(`/api/markets?sort=${state.marketSort}&limit=35`);
     renderMarkets(markets);
-    renderOpportunities(opps);
-    renderTrending(trending);
     $("status").textContent = "Live";
   } catch (err) {
     $("status").textContent = "Error";
     console.error(err);
+  }
+}
+
+async function refreshSecondary() {
+  const tasks = [
+    api("/api/summary").then(renderPulse),
+    api("/api/opportunities?limit=12&min_sales=5").then(renderOpportunities),
+    api("/api/markets?sort=gainers&limit=12").then(renderTrending),
+  ];
+  const results = await Promise.allSettled(tasks);
+  if (results.some((result) => result.status === "rejected")) {
+    $("status").textContent = "Partial";
+    console.error(results.filter((result) => result.status === "rejected"));
   }
 }
 
@@ -276,4 +281,6 @@ window.addEventListener("resize", () => {
 });
 
 refresh();
-setInterval(refresh, 15000);
+refreshSecondary();
+setInterval(refresh, 30000);
+setInterval(refreshSecondary, 60000);
