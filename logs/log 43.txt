@@ -1,0 +1,37 @@
+Log 43
+
+Reviewed suggestions.txt against the current DonutDex dashboard implementation.
+
+Implemented or mostly implemented:
+- Kid-friendlier wording across public labels.
+- Usual Sell Price and stack pricing.
+- Suggested Sell Price modes: Sell Fast, Normal, Try Higher.
+- What Can I Make? crafting section with one selected recipe at a time.
+- Crafting item result prices, ingredient costs, and extra money estimate.
+- Book results excluded from crafting/dashboard output.
+- DonutDex Says summary box.
+- Timeframe buttons: 1H, 6H, 24H, 7D, 30D, ALL.
+- Chart outlier clipping notice.
+- Items Sold bars on chart.
+- Recent Sales section with clear natural-language rows.
+- Listings Now section using "last seen" wording.
+- Minecraft-style item icons in search, market rows, item pages, crafting, recent sales, and listings.
+- Search autocomplete with icons and current prices.
+
+Partially implemented:
+- Chart uses candle median/vwap/close and clips extremes, but does not yet show faint raw sale dots or a separate rolling typical-price line.
+- Items Sold bars exist, but there is no hover tooltip yet.
+- Recent sales are clear natural-language rows, but not a formal column-header table.
+- Listing freshness says "last seen", but does not yet use green/yellow/gray freshness indicators.
+- DonutDex Pro exists, but it has not been expanded into the richer icon/list style from the suggestions.
+
+Not implemented yet:
+- Grouping duplicate/similar listings into price levels.
+- Market-depth style listing visualization.
+- Breadcrumbs or top navigation for Market, Trending, Deals, Crafting, Watchlist, Pro.
+- Advanced Stats section for Median, VWAP, Volume, Liquidity, Volatility, OHLC.
+- Chart hover tooltips.
+- Price / Items Sold / Money Spent chart toggles.
+
+Note:
+- Some wording in suggestions.txt was later superseded by newer wording choices in chat, such as replacing "Cheapest Listing" with "Cheapest Now", "Items Listed" with "Amount Listed", and "Potential Deals" with "Good Buys".
