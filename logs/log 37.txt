@@ -1,0 +1,17 @@
+Log 37
+
+Replaced remaining "Sold Today" wording and refreshed the dashboard script version.
+
+Changes made:
+- Changed item-page "Sold Today" metric to "Times Sold Today".
+- Changed crafting recipe "Sold Today" stat to "Times Sold Today".
+- Updated the dashboard script cache buster to /app.js?v=37.
+
+Verification:
+- Confirmed dashboard/static no longer contains visible "Sold Today" labels.
+- Confirmed "Median" is not used as a visible label in the current static UI.
+- Ran node --check dashboard/static/app.js successfully.
+- Restarted donut-market-dashboard successfully.
+- Confirmed the service is active.
+- Confirmed the live homepage serves /app.js?v=37.
+- Confirmed the live app script serves "Times Sold Today".

@@ -377,7 +377,7 @@ function renderItemDetails(item) {
   $("detail-metrics").innerHTML = [
     ["Typical Price", fmtMoney(item.sold_median_24h)],
     ["Cheapest Now", fmtListing(item.lowest_listing)],
-    ["Sold Today", fmtNumber(item.sales_count_24h)],
+    ["Times Sold Today", fmtNumber(item.sales_count_24h)],
     ["Listings Now", fmtNumber(item.listing_count)],
     ["Items Listed", fmtNumber(item.listed_quantity)],
     ["Money Spent Today", fmtMoney(item.volume_24h)],
@@ -415,7 +415,7 @@ function recipeDetail(recipe) {
   const recipeStats = [
     recipe.result_value !== null && recipe.result_value !== undefined ? ["Sell For", fmtMoney(recipe.result_value)] : null,
     recipe.ingredient_cost !== null && recipe.ingredient_cost !== undefined ? ["Cost to Make", fmtMoney(recipe.ingredient_cost)] : null,
-    recipe.result.sales_count_24h !== null && recipe.result.sales_count_24h !== undefined ? ["Sold Today", fmtNumber(recipe.result.sales_count_24h)] : null,
+    recipe.result.sales_count_24h !== null && recipe.result.sales_count_24h !== undefined ? ["Times Sold Today", fmtNumber(recipe.result.sales_count_24h)] : null,
     recipe.result.volume_24h !== null && recipe.result.volume_24h !== undefined ? ["Money Spent Today", fmtMoney(recipe.result.volume_24h)] : null,
   ].filter(Boolean);
   return `
