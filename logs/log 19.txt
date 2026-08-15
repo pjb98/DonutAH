@@ -1,0 +1,35 @@
+Log 19 - Item detail pages and egg search
+
+Date: 2026-08-15
+
+Changes made:
+- Added dedicated dashboard routes under /item/<item_key>.
+- Updated the static file handler so direct item URLs serve the dashboard app.
+- Changed search/table/trending/deal clicks to navigate to item URLs instead of only scrolling to the chart.
+- Added an item detail panel with:
+  - Market value
+  - 24h median
+  - Lowest ask
+  - 24h sales
+  - 24h volume
+  - Listed quantity
+- Added item usage metadata for Egg, Sugar, Wheat, Pumpkin, and Milk Bucket.
+- Added Egg crafting/use context:
+  - Cake: 3x Milk Bucket, 2x Sugar, 1x Egg, 3x Wheat
+  - Pumpkin Pie: 1x Pumpkin, 1x Sugar, 1x Egg
+  - Can be thrown
+  - Thrown eggs have a chance to spawn chicks
+- Added item-route layout CSS so /item/... behaves like a focused item page:
+  - The market table, pulse cards, side panels, and status panel are hidden.
+  - Item details appear before the chart.
+  - A Market link returns to the homepage.
+- Improved backend search ranking so exact/prefix item matches rank above unrelated substring matches.
+
+Verification:
+- python3 -m py_compile dashboard/server.py passed.
+- node --check dashboard/static/app.js passed.
+- Restarted donut-market-dashboard.service successfully.
+- Verified /api/search?q=egg&limit=8 returns Egg first, followed by other egg items before unrelated leggings matches.
+- Verified /api/item for Egg returns market data plus uses metadata.
+- Verified /item/minecraft%3Aegg%3A2b253dbe1087 returns HTTP 200 text/html.
+- Confirmed donut-market-dashboard.service is active.

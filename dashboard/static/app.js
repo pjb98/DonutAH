@@ -42,6 +42,14 @@ function itemSubtext(row) {
   return "";
 }
 
+function itemPath(itemKey) {
+  return `/item/${encodeURIComponent(itemKey)}`;
+}
+
+function setRouteMode() {
+  document.body.classList.toggle("item-route", Boolean(currentPathItemKey()));
+}
+
 async function api(path) {
   const res = await fetch(path, { cache: "no-store" });
   if (!res.ok) throw new Error(await res.text());
@@ -99,11 +107,11 @@ function renderMarkets(rows) {
   `).join("");
 
   $("markets").querySelectorAll("tr").forEach((tr) => {
-    tr.addEventListener("click", () => selectItem(tr.dataset.itemKey));
+    tr.addEventListener("click", () => navigateToItem(tr.dataset.itemKey));
   });
 
-  if (!state.selectedItemKey && rows[0]) {
-    selectItem(rows[0].item_key);
+  if (!state.selectedItemKey && rows[0] && !currentPathItemKey()) {
+    selectItem(rows[0].item_key, { updateUrl: false, scroll: false });
   }
 }
 
@@ -119,7 +127,7 @@ function renderOpportunities(rows) {
     </div>
   `).join("");
   $("opportunities").querySelectorAll(".list-row").forEach((row) => {
-    row.addEventListener("click", () => selectItem(row.dataset.itemKey));
+    row.addEventListener("click", () => navigateToItem(row.dataset.itemKey));
   });
 }
 
@@ -134,7 +142,7 @@ function renderTrending(rows) {
     </div>
   `).join("");
   $("trending").querySelectorAll(".list-row").forEach((row) => {
-    row.addEventListener("click", () => selectItem(row.dataset.itemKey));
+    row.addEventListener("click", () => navigateToItem(row.dataset.itemKey));
   });
 }
 
@@ -204,12 +212,56 @@ function drawChart(candles) {
   });
 }
 
-async function selectItem(itemKey) {
+function renderItemDetails(item) {
+  $("detail-title").textContent = itemLabel(item);
+  $("detail-subtitle").textContent = item.uses?.summary || "Live market data from recent DonutSMP auction sales.";
+  $("detail-metrics").innerHTML = [
+    ["Market Value", fmtMoney(item.market_value || item.sold_median_24h)],
+    ["24h Median", fmtMoney(item.sold_median_24h)],
+    ["Lowest Ask", fmtMoney(item.lowest_listing)],
+    ["24h Sales", fmtNumber(item.sales_count_24h)],
+    ["24h Volume", fmtMoney(item.volume_24h)],
+    ["Listed Quantity", fmtNumber(item.listed_quantity)],
+  ].map(([label, value]) => `
+    <div>
+      <span>${label}</span>
+      <strong>${value}</strong>
+    </div>
+  `).join("");
+
+  const crafts = item.uses?.crafting || [];
+  $("crafting-uses").innerHTML = crafts.length ? crafts.map((recipe) => `
+    <div class="use-card">
+      <strong>${recipe.result}</strong>
+      <span>${recipe.ingredients.join(" · ")}</span>
+    </div>
+  `).join("") : `<div class="empty-note">No known crafting uses added yet.</div>`;
+
+  const notes = item.uses?.notes || [];
+  $("item-notes").innerHTML = notes.length ? notes.map((note) => `
+    <div class="use-card"><span>${note}</span></div>
+  `).join("") : `<div class="empty-note">No special notes added yet.</div>`;
+}
+
+async function selectItem(itemKey, options = {}) {
+  const settings = { updateUrl: true, scroll: true, ...options };
   state.selectedItemKey = itemKey;
   $("chart-title").textContent = "Loading item...";
   $("chart-meta").textContent = "";
+  $("detail-title").textContent = "Loading item...";
+  $("detail-subtitle").textContent = "";
   $("item-badges").innerHTML = "";
-  $("chart").scrollIntoView({ behavior: "smooth", block: "center" });
+  if (settings.updateUrl && window.location.pathname !== itemPath(itemKey)) {
+    history.pushState({ itemKey }, "", itemPath(itemKey));
+  }
+  setRouteMode();
+  if (settings.scroll) {
+    if (document.body.classList.contains("item-route")) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      $("item-detail-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
   const item = await api(`/api/item?item_key=${encodeURIComponent(itemKey)}&limit=240`);
   $("chart-title").textContent = itemLabel(item);
   $("chart-meta").textContent = `${fmtMoney(item.sold_median_24h || item.market_value)} · ${fmtPct(item.change_pct)} 24h vs 7d · ${fmtNumber(item.sales_count_24h)} sales · ${fmtMoney(item.volume_24h)} volume`;
@@ -217,7 +269,17 @@ async function selectItem(itemKey) {
     item.lowest_listing ? `<span>Ask ${fmtMoney(item.lowest_listing)}</span>` : "",
     item.variant_note ? `<span>${item.variant_note}</span>` : "",
   ].join("");
+  renderItemDetails(item);
   drawChart(item.candles || []);
+}
+
+function navigateToItem(itemKey) {
+  selectItem(itemKey, { updateUrl: true, scroll: true });
+}
+
+function currentPathItemKey() {
+  if (!window.location.pathname.startsWith("/item/")) return "";
+  return decodeURIComponent(window.location.pathname.slice("/item/".length));
 }
 
 async function runSearch(query) {
@@ -243,7 +305,7 @@ async function runSearch(query) {
       const selected = results.find((row) => row.item_key === button.dataset.itemKey);
       $("search").value = itemLabel(selected);
       box.classList.remove("open");
-      selectItem(button.dataset.itemKey);
+      navigateToItem(button.dataset.itemKey);
     });
   });
 }
@@ -281,16 +343,29 @@ document.querySelectorAll("[data-table='markets'] button").forEach((button) => {
   });
 });
 
+window.addEventListener("popstate", () => {
+  const itemKey = currentPathItemKey();
+  setRouteMode();
+  if (itemKey) {
+    selectItem(itemKey, { updateUrl: false, scroll: true });
+  }
+});
+
 $("search").addEventListener("input", (event) => {
   clearTimeout(state.searchTimer);
   state.searchTimer = setTimeout(() => runSearch(event.target.value), 160);
 });
 
 window.addEventListener("resize", () => {
-  if (state.selectedItemKey) selectItem(state.selectedItemKey);
+  if (state.selectedItemKey) selectItem(state.selectedItemKey, { updateUrl: false, scroll: false });
 });
 
+setRouteMode();
 refresh();
 refreshSecondary();
+const pathItemKey = currentPathItemKey();
+if (pathItemKey) {
+  selectItem(pathItemKey, { updateUrl: false, scroll: false });
+}
 setInterval(refresh, 30000);
 setInterval(refreshSecondary, 60000);

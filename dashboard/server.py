@@ -75,6 +75,60 @@ def variant_note(item_id):
     return heterogeneous.get(item_id)
 
 
+def item_uses(item_id):
+    uses = {
+        "minecraft:egg": {
+            "summary": "Ingredient for food crafts and throwable item.",
+            "crafting": [
+                {
+                    "result": "Cake",
+                    "ingredients": ["3x Milk Bucket", "2x Sugar", "1x Egg", "3x Wheat"],
+                },
+                {
+                    "result": "Pumpkin Pie",
+                    "ingredients": ["1x Pumpkin", "1x Sugar", "1x Egg"],
+                },
+            ],
+            "notes": [
+                "Can be thrown.",
+                "Thrown eggs have a chance to spawn chicks.",
+            ],
+        },
+        "minecraft:sugar": {
+            "summary": "Common cooking and potion ingredient.",
+            "crafting": [
+                {"result": "Cake", "ingredients": ["3x Milk Bucket", "2x Sugar", "1x Egg", "3x Wheat"]},
+                {"result": "Pumpkin Pie", "ingredients": ["1x Pumpkin", "1x Sugar", "1x Egg"]},
+            ],
+            "notes": ["Used to brew Swiftness potions."],
+        },
+        "minecraft:wheat": {
+            "summary": "Core farming commodity used in food and animal breeding.",
+            "crafting": [
+                {"result": "Bread", "ingredients": ["3x Wheat"]},
+                {"result": "Cake", "ingredients": ["3x Milk Bucket", "2x Sugar", "1x Egg", "3x Wheat"]},
+            ],
+            "notes": ["Used to breed cows and sheep."],
+        },
+        "minecraft:pumpkin": {
+            "summary": "Ingredient and utility block.",
+            "crafting": [
+                {"result": "Pumpkin Pie", "ingredients": ["1x Pumpkin", "1x Sugar", "1x Egg"]},
+                {"result": "Jack o'Lantern", "ingredients": ["1x Carved Pumpkin", "1x Torch"]},
+            ],
+            "notes": ["Carved pumpkins are used for snow golems and iron golems."],
+        },
+        "minecraft:milk_bucket": {
+            "summary": "Consumable utility item and cake ingredient.",
+            "crafting": [
+                {"result": "Cake", "ingredients": ["3x Milk Bucket", "2x Sugar", "1x Egg", "3x Wheat"]},
+            ],
+            "notes": ["Can clear status effects when consumed."],
+        },
+    }
+    return uses.get(item_id, {"summary": "", "crafting": [], "notes": []})
+
+
 def decorate_items(items):
     for item in items:
         item["variant_note"] = variant_note(item.get("item_id"))
@@ -264,7 +318,10 @@ def search(conn, params):
     limit = clamp_limit(params.get("limit", ["12"])[0], default=12, maximum=30)
     if not q:
         return []
-    pattern = f"%{q.lower()}%"
+    normalized = q.lower()
+    pattern = f"%{normalized}%"
+    prefix = f"{normalized}%"
+    word_pattern = f"% {normalized}%"
     result = rows(
         conn,
         f"""
@@ -282,10 +339,20 @@ def search(conn, params):
         FROM market_stats
         WHERE lower(COALESCE(display_name, '')) LIKE ?
            OR lower(item_id) LIKE ?
-        ORDER BY sales_count_24h DESC, volume_24h DESC
+        ORDER BY
+            CASE
+                WHEN lower(COALESCE(display_name, '')) = ? THEN 0
+                WHEN lower(replace(item_id, 'minecraft:', '')) = ? THEN 1
+                WHEN lower(COALESCE(display_name, '')) LIKE ? THEN 2
+                WHEN lower(replace(item_id, 'minecraft:', '')) LIKE ? THEN 3
+                WHEN lower(COALESCE(display_name, '')) LIKE ? THEN 4
+                ELSE 5
+            END,
+            sales_count_24h DESC,
+            volume_24h DESC
         LIMIT ?
         """,
-        (pattern, pattern, limit),
+        (pattern, pattern, normalized, normalized, prefix, prefix, word_pattern, limit),
     )
     return decorate_items(result)
 
@@ -340,6 +407,7 @@ def item_detail(conn, params):
     if not stats:
         return None
     stats["variant_note"] = variant_note(stats.get("item_id"))
+    stats["uses"] = item_uses(stats.get("item_id"))
     stats["candles"] = candles(conn, {"item_key": [item_key], "limit": [params.get("limit", ["240"])[0]]})
     return stats
 
@@ -349,7 +417,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
     def translate_path(self, path):
         parsed = urlparse(path)
-        if parsed.path == "/":
+        if parsed.path == "/" or parsed.path.startswith("/item/"):
             return str(STATIC_ROOT / "index.html")
         return str(STATIC_ROOT / parsed.path.lstrip("/"))
 

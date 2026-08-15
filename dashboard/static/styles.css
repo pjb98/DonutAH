@@ -185,6 +185,7 @@ main {
 
 .main-panel,
 .chart-panel,
+.item-detail-panel,
 .status-panel {
   grid-column: span 1;
 }
@@ -239,6 +240,21 @@ button {
 
 button.active {
   background: #2a3a30;
+  color: var(--text);
+  border-color: #4d725a;
+}
+
+.market-link {
+  border: 1px solid #2a362f;
+  border-radius: 5px;
+  background: #151b17;
+  color: var(--muted);
+  padding: 7px 10px;
+  text-decoration: none;
+  font-size: 12px;
+}
+
+.market-link:hover {
   color: var(--text);
   border-color: #4d725a;
 }
@@ -353,6 +369,106 @@ canvas {
   background: #101411;
 }
 
+body.item-route .hero {
+  grid-template-columns: minmax(220px, 0.7fr) minmax(360px, 1.3fr);
+  padding-bottom: 18px;
+}
+
+body.item-route .hero-copy p,
+body.item-route .market-pulse,
+body.item-route .main-panel,
+body.item-route .side-stack,
+body.item-route .status-panel {
+  display: none;
+}
+
+body.item-route main {
+  padding-top: 16px;
+}
+
+body.item-route .layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+body.item-route .item-detail-panel,
+body.item-route .chart-panel {
+  grid-column: 1 / -1;
+}
+
+body.item-route .item-detail-panel {
+  order: 1;
+}
+
+body.item-route .chart-panel {
+  order: 2;
+}
+
+.detail-body {
+  padding: 14px 16px 16px;
+}
+
+.detail-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.detail-metrics div {
+  border: 1px solid #2d3931;
+  border-radius: 7px;
+  background: #151b17;
+  padding: 11px;
+}
+
+.detail-metrics span,
+.empty-note {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.detail-metrics strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 17px;
+}
+
+.uses-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+h3 {
+  margin: 0 0 9px;
+  font-size: 13px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.uses-list {
+  display: grid;
+  gap: 8px;
+}
+
+.use-card {
+  border: 1px solid #2d3931;
+  border-radius: 7px;
+  background: #151b17;
+  padding: 10px;
+}
+
+.use-card strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.use-card span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .status {
   color: var(--green);
   font-size: 13px;
@@ -389,6 +505,8 @@ canvas {
   }
 
   .market-pulse,
+  .detail-metrics,
+  .uses-grid,
   .status-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -406,6 +524,8 @@ canvas {
   }
 
   .market-pulse,
+  .detail-metrics,
+  .uses-grid,
   .status-grid {
     grid-template-columns: 1fr;
   }
