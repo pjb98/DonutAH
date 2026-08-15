@@ -1,0 +1,17 @@
+Log 32
+
+Added Minecraft-style item icons throughout the public dashboard UI.
+
+Changes made:
+- Added a local item icon helper in dashboard/static/app.js.
+- Added icons to market table rows, deal rows, trending rows, search autocomplete results, item page titles, crafting recipe selectors, selected recipes, ingredients, recent sales, and current listings.
+- Added CSS for fixed-size pixel-like item icon tiles so rows stay stable and easy to scan.
+- Kept the implementation local with no external image dependencies.
+
+Verification:
+- Ran node --check dashboard/static/app.js successfully.
+- Restarted donut-market-dashboard successfully.
+- Confirmed the dashboard service is active.
+- Confirmed the homepage responds on http://127.0.0.1:8095/.
+- Confirmed /api/search?q=leather&limit=3 returns leather results.
+- Confirmed /api/item for leather returns market, listing, and crafting data.

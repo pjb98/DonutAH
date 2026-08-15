@@ -74,8 +74,91 @@ function profitClass(value) {
   return Number(value) > 0 ? "gain" : Number(value) < 0 ? "loss" : "";
 }
 
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  }[char]));
+}
+
 function itemLabel(row) {
   return row.display_name || (row.item_id || "Unknown").split(":").pop().replaceAll("_", " ");
+}
+
+function itemId(row) {
+  if (typeof row === "string") return row;
+  return row?.item_id || row?.id || row?.item?.item_id || "";
+}
+
+function iconData(row) {
+  const id = itemId(row);
+  const name = itemLabel(row).toLowerCase();
+  const exact = {
+    "minecraft:leather": ["🟫", "#7d4d30"],
+    "minecraft:leather_helmet": ["🧢", "#7d4d30"],
+    "minecraft:leather_chestplate": ["🧥", "#7d4d30"],
+    "minecraft:leather_leggings": ["👖", "#7d4d30"],
+    "minecraft:leather_boots": ["🥾", "#7d4d30"],
+    "minecraft:diamond": ["💎", "#3ccfe0"],
+    "minecraft:emerald": ["◆", "#21a854"],
+    "minecraft:gold_ingot": ["▰", "#e0ad31"],
+    "minecraft:iron_ingot": ["▰", "#c7c9c2"],
+    "minecraft:netherite_ingot": ["▰", "#3b3234"],
+    "minecraft:egg": ["🥚", "#e8dfc8"],
+    "minecraft:paper": ["📄", "#dfd6ba"],
+    "minecraft:item_frame": ["🖼️", "#a36b38"],
+    "minecraft:stick": ["╱", "#8b5b2e"],
+    "minecraft:string": ["⌁", "#d8d8d8"],
+    "minecraft:obsidian": ["▣", "#221a34"],
+    "minecraft:totem_of_undying": ["☥", "#d3a83e"],
+    "minecraft:elytra": ["◢", "#6d7480"],
+    "minecraft:spawner": ["▦", "#45545c"],
+    "minecraft:dirt": ["▦", "#765039"],
+    "minecraft:grass_block": ["▦", "#527c36"],
+    "minecraft:oak_planks": ["▤", "#a2723a"],
+    "minecraft:chest": ["▤", "#b5792e"],
+    "minecraft:shulker_box": ["▣", "#b77dcc"],
+    "minecraft:filled_map": ["▧", "#6a8a55"],
+  };
+  if (exact[id]) return exact[id];
+  if (id.includes("diamond")) return ["◆", "#3ccfe0"];
+  if (id.includes("emerald")) return ["◆", "#21a854"];
+  if (id.includes("gold")) return ["▰", "#e0ad31"];
+  if (id.includes("iron")) return ["▰", "#c7c9c2"];
+  if (id.includes("netherite")) return ["▰", "#3b3234"];
+  if (id.includes("leather")) return ["🟫", "#7d4d30"];
+  if (id.includes("egg") || name.includes("egg")) return ["🥚", "#e8dfc8"];
+  if (id.includes("sword")) return ["⚔", "#7e8790"];
+  if (id.includes("pickaxe")) return ["⛏", "#7e8790"];
+  if (id.includes("axe")) return ["🪓", "#7e8790"];
+  if (id.includes("helmet")) return ["◠", "#7e8790"];
+  if (id.includes("chestplate")) return ["▣", "#7e8790"];
+  if (id.includes("leggings")) return ["▥", "#7e8790"];
+  if (id.includes("boots")) return ["▴", "#7e8790"];
+  if (id.includes("potion")) return ["⚗", "#9b6ee8"];
+  if (id.includes("map")) return ["▧", "#6a8a55"];
+  return ["▣", "#5f6f66"];
+}
+
+function itemIcon(row, size = "") {
+  const [glyph, color] = iconData(row);
+  const label = escapeHtml(itemLabel(row));
+  return `<span class="item-icon ${size}" style="--icon-color:${color}" aria-label="${label} icon">${escapeHtml(glyph)}</span>`;
+}
+
+function itemNameHtml(row, subtext = "", size = "") {
+  return `
+    <div class="item-cell">
+      ${itemIcon(row, size)}
+      <div>
+        <div class="item-name">${escapeHtml(itemLabel(row))}</div>
+        ${subtext ? `<div class="item-id">${subtext}</div>` : ""}
+      </div>
+    </div>
+  `;
 }
 
 function itemSubtext(row) {
@@ -137,8 +220,7 @@ function renderMarkets(rows) {
   $("markets").innerHTML = rows.map((row) => `
     <tr data-item-key="${row.item_key}">
       <td>
-        <div class="item-name">${itemLabel(row)}</div>
-        <div class="item-id">${itemSubtext(row)}</div>
+        ${itemNameHtml(row, itemSubtext(row))}
       </td>
       <td>${fmtMoney(row.sold_median_24h || row.market_value)}</td>
       <td class="${pctClass(row.change_pct)}">${fmtPct(row.change_pct)}</td>
@@ -161,8 +243,7 @@ function renderOpportunities(rows) {
   $("opportunities").innerHTML = rows.map((row) => `
     <div class="list-row" data-item-key="${row.item_key}">
       <div>
-        <div class="item-name">${itemLabel(row)}</div>
-        <div class="item-id">Ask ${fmtMoney(row.lowest_listing)} · Fair ${fmtMoney(row.market_value)}</div>
+        ${itemNameHtml(row, `Ask ${fmtMoney(row.lowest_listing)} · Fair ${fmtMoney(row.market_value)}`)}
         ${variantBadge(row)}
       </div>
       <div class="gain">${fmtPct(row.discount_pct)}</div>
@@ -177,8 +258,7 @@ function renderTrending(rows) {
   $("trending").innerHTML = rows.map((row) => `
     <div class="list-row" data-item-key="${row.item_key}">
       <div>
-        <div class="item-name">${itemLabel(row)}</div>
-        <div class="item-id">${fmtMoney(row.sold_median_24h)} · ${fmtNumber(row.sales_count_24h)} sales</div>
+        ${itemNameHtml(row, `${fmtMoney(row.sold_median_24h)} · ${fmtNumber(row.sales_count_24h)} sales`)}
       </div>
       <div class="${pctClass(row.change_pct)}">${fmtPct(row.change_pct)}</div>
     </div>
@@ -271,7 +351,7 @@ function drawChart(candles) {
 }
 
 function renderItemDetails(item) {
-  $("detail-title").textContent = itemLabel(item);
+  $("detail-title").innerHTML = `${itemIcon(item, "large")}<span>${escapeHtml(itemLabel(item))}</span>`;
   $("detail-subtitle").textContent = item.uses?.summary || "Live market data from recent DonutSMP auction sales.";
   $("detail-item-id").textContent = "";
   const marketPrice = item.price_each || item.market_value || item.sold_median_24h;
@@ -313,13 +393,19 @@ function renderItemDetails(item) {
 
   $("recent-sales").innerHTML = (item.recent_sales || []).length ? item.recent_sales.map((sale) => `
     <div class="compact-row">
-      <div><strong>${fmtNumber(sale.quantity)} sold for ${fmtMoney(sale.price_each)} each</strong><span>${fmtMoney(sale.total_price)} total · ${timeAgo(sale.sold_at_ms)}</span></div>
+      <div class="item-cell">
+        ${itemIcon(item, "tiny")}
+        <div><strong>${fmtNumber(sale.quantity)} sold for ${fmtMoney(sale.price_each)} each</strong><span>${fmtMoney(sale.total_price)} total · ${timeAgo(sale.sold_at_ms)}</span></div>
+      </div>
     </div>
   `).join("") : `<div class="empty-note">No recent sales captured.</div>`;
 
   $("current-listings").innerHTML = (item.current_listings || []).length ? item.current_listings.map((listing) => `
     <div class="compact-row">
-      <div><strong>${fmtMoney(listing.price_each)} each × ${fmtNumber(listing.quantity)}</strong><span>${fmtMoney(listing.total_price)} total · ${fmtDurationMs(listing.time_left)} · last seen ${timeAgo(Date.parse(listing.snapshot_at))}</span></div>
+      <div class="item-cell">
+        ${itemIcon(item, "tiny")}
+        <div><strong>${fmtMoney(listing.price_each)} each × ${fmtNumber(listing.quantity)}</strong><span>${fmtMoney(listing.total_price)} total · ${fmtDurationMs(listing.time_left)} · last seen ${timeAgo(Date.parse(listing.snapshot_at))}</span></div>
+      </div>
     </div>
   `).join("") : `<div class="empty-note">No listings seen${item.listing_observed_at ? ` in latest scan` : ""}.</div>`;
 }
@@ -335,9 +421,12 @@ function recipeDetail(recipe) {
   return `
     <div class="recipe-card">
       <div class="recipe-head">
-        <div>
-          <strong>${recipe.result.name}</strong>
-          <span>${fmtNumber(recipe.result.quantity || 1)} crafted${recipe.result.price_each ? ` · ${fmtMoney(recipe.result.price_each)} each` : ""}</span>
+        <div class="item-cell">
+          ${itemIcon(recipe.result)}
+          <div>
+            <strong>${escapeHtml(recipe.result.name)}</strong>
+            <span>${fmtNumber(recipe.result.quantity || 1)} crafted${recipe.result.price_each ? ` · ${fmtMoney(recipe.result.price_each)} each` : ""}</span>
+          </div>
         </div>
         <div class="recipe-profit ${profitClass(recipe.profit)}">
           ${canPriceRecipe ? fmtMoney(recipe.profit) : "Price unknown"}
@@ -357,7 +446,7 @@ function recipeDetail(recipe) {
       <div class="ingredient-list">
         ${recipe.ingredients.map((ingredient) => `
           <div>
-            <span>${fmtNumber(ingredient.quantity)}x ${ingredient.name}</span>
+            <span class="item-cell">${itemIcon(ingredient, "tiny")}<span>${fmtNumber(ingredient.quantity)}x ${escapeHtml(ingredient.name)}</span></span>
             <strong>${fmtMoney(ingredient.total_cost)}</strong>
             <small>${fmtMoney(ingredient.price_each)} each</small>
           </div>
@@ -378,7 +467,7 @@ function renderCraftingUses(crafts, selectedIndex) {
     <div class="craft-result-grid">
       ${crafts.map((recipe, index) => `
         <button class="craft-result ${index === active ? "active" : ""}" data-recipe-index="${index}">
-          <strong>${recipe.result.name}</strong>
+          <strong class="item-cell">${itemIcon(recipe.result, "tiny")}<span>${escapeHtml(recipe.result.name)}</span></strong>
           <span>${recipe.profit === null || recipe.profit === undefined ? "Price unknown" : `Could earn ${fmtMoney(recipe.profit)}`}</span>
           <span>${fmtNumber(recipe.result.sales_count_24h)} sold · ${fmtMoney(recipe.result.volume_24h)} traded</span>
         </button>
@@ -440,9 +529,12 @@ async function runSearch(query) {
   const results = await api(`/api/search?q=${encodeURIComponent(query)}&limit=10`);
   box.innerHTML = results.map((row) => `
     <button class="search-result" data-item-key="${row.item_key}">
-      <span>
-        <strong>${itemLabel(row)}</strong>
-        <small>${itemSubtext(row)}</small>
+      <span class="item-cell">
+        ${itemIcon(row)}
+        <span>
+          <strong>${escapeHtml(itemLabel(row))}</strong>
+          <small>${itemSubtext(row)}</small>
+        </span>
       </span>
       <span>${fmtMoney(row.sold_median_24h || row.lowest_listing)}</span>
     </button>
