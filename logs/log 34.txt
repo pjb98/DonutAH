@@ -1,0 +1,14 @@
+Log 34
+
+Cleaned up remaining listing wording and forced browsers to load the newest dashboard JavaScript.
+
+Changes made:
+- Changed the item page listings panel heading from "For Sale Now" to "Listings Now".
+- Added a version query to the app.js script URL so cached browsers load the newest wording.
+
+Verification:
+- Confirmed dashboard/static no longer contains visible "For Sale", "Lowest Ask", or "Ask" wording.
+- Ran node --check dashboard/static/app.js successfully.
+- Restarted donut-market-dashboard successfully.
+- Confirmed the service is active.
+- Confirmed the live homepage serves "Listings Now" and /app.js?v=34.
