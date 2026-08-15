@@ -494,6 +494,31 @@ body.item-route .activity-panel {
   color: var(--text);
 }
 
+.suggested-modes strong {
+  display: block;
+  margin: 0 0 3px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.donut-says {
+  display: grid;
+  gap: 5px;
+  margin-top: 12px;
+  border-top: 1px solid #26312b;
+  padding-top: 11px;
+}
+
+.donut-says strong {
+  color: var(--amber);
+  font-size: 13px;
+}
+
+.donut-says span {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
 .detail-metrics {
   display: grid;
   grid-template-columns: repeat(6, minmax(120px, 1fr));

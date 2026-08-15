@@ -1,0 +1,35 @@
+Log 31 - Item page guidance and wording polish
+
+Date: 2026-08-15
+
+Changes made:
+- Added a DonutDex Says box under Suggested Sell Price.
+- The DonutDex Says box summarizes:
+  - Usual sell price
+  - Cheapest current listing
+  - Quick-sell suggestion
+  - Number of sales recorded today
+- Changed stack wording from "/ 64 stack" to "per stack (64)".
+- Changed Suggested Sell Price mode labels:
+  - Quick -> Sell Fast
+  - Market -> Normal
+  - High -> Try Higher
+- Reordered item stat cards:
+  - Typical Price
+  - Cheapest Listing
+  - Sold Today
+  - Listings Now
+  - Items Listed
+  - Money Traded Today
+- Renamed Crafting Uses to What Can I Make?
+- Simplified recipe cards when result price data is missing:
+  - Hide empty Sell For / Cost to Make / Sold Today boxes.
+  - Show "Not enough recent sales to estimate earnings."
+- Reworded Recent Sales rows into natural language.
+- Reworded listing freshness from "observed" to "last seen".
+
+Verification:
+- node --check dashboard/static/app.js passed.
+- Restarted donut-market-dashboard.service successfully.
+- Verified /item/minecraft%3Aleather returns HTTP 200.
+- Confirmed donut-market-dashboard.service is active.

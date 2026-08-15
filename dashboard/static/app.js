@@ -31,6 +31,10 @@ function fmtAsk(value) {
   return value === null || value === undefined ? "No active asks" : fmtMoney(value);
 }
 
+function plainPrice(value) {
+  return value === null || value === undefined ? "unknown" : fmtMoney(value);
+}
+
 function timeAgo(ms) {
   if (!ms) return "-";
   const seconds = Math.max(0, Math.floor((Date.now() - Number(ms)) / 1000));
@@ -272,23 +276,30 @@ function renderItemDetails(item) {
   $("detail-item-id").textContent = "";
   const marketPrice = item.price_each || item.market_value || item.sold_median_24h;
   $("market-price").textContent = fmtMoney(marketPrice);
-  $("stack-price").textContent = item.price_stack ? `≈ ${fmtMoney(item.price_stack)} / ${fmtNumber(item.max_stack || 64)} stack` : "";
+  $("stack-price").textContent = item.price_stack ? `≈ ${fmtMoney(item.price_stack)} per stack (${fmtNumber(item.max_stack || 64)})` : "";
   $("movement-line").innerHTML = `<span class="${pctClass(item.change_pct)}">${fmtPct(item.change_pct)} 24h vs 7d</span>`;
   const suggested = item.suggested_prices || {};
   $("suggested-price").textContent = fmtMoney(suggested.market);
   $("suggested-stack").textContent = suggested.market && item.max_stack ? `${fmtMoney(suggested.market * item.max_stack)} / stack` : "";
   $("suggested-modes").innerHTML = [
-    ["Quick", suggested.quick],
-    ["Market", suggested.market],
-    ["High", suggested.max_profit],
-  ].map(([label, value]) => `<span>${label} ${fmtMoney(value)}</span>`).join("");
+    ["Sell Fast", suggested.quick],
+    ["Normal", suggested.market],
+    ["Try Higher", suggested.max_profit],
+  ].map(([label, value]) => `<span><strong>${label}</strong>${fmtMoney(value)}</span>`).join("");
+  $("donut-says").innerHTML = `
+    <strong>DonutDex Says</strong>
+    <span>${itemLabel(item)} usually sells for around ${plainPrice(marketPrice)} each.</span>
+    <span>The cheapest current listing is ${fmtAsk(item.lowest_listing)}.</span>
+    <span>Want to sell quickly? Try around ${plainPrice(suggested.quick)}.</span>
+    <span>${fmtNumber(item.sales_count_24h)} ${itemLabel(item)} sales were recorded today.</span>
+  `;
 
   $("detail-metrics").innerHTML = [
+    ["Typical Price", fmtMoney(item.sold_median_24h)],
     ["Cheapest Listing", fmtAsk(item.lowest_listing)],
+    ["Sold Today", fmtNumber(item.sales_count_24h)],
     ["Listings Now", fmtNumber(item.listing_count)],
     ["Items Listed", fmtNumber(item.listed_quantity)],
-    ["Typical 24h Price", fmtMoney(item.sold_median_24h)],
-    ["Sold Today", fmtNumber(item.sales_count_24h)],
     ["Money Traded Today", fmtMoney(item.volume_24h)],
   ].map(([label, value]) => `
     <div>
@@ -302,50 +313,47 @@ function renderItemDetails(item) {
 
   $("recent-sales").innerHTML = (item.recent_sales || []).length ? item.recent_sales.map((sale) => `
     <div class="compact-row">
-      <div><strong>${fmtNumber(sale.quantity)} × ${fmtMoney(sale.price_each)}</strong><span>${timeAgo(sale.sold_at_ms)}</span></div>
-      <strong>${fmtMoney(sale.total_price)}</strong>
+      <div><strong>${fmtNumber(sale.quantity)} sold for ${fmtMoney(sale.price_each)} each</strong><span>${fmtMoney(sale.total_price)} total · ${timeAgo(sale.sold_at_ms)}</span></div>
     </div>
   `).join("") : `<div class="empty-note">No recent sales captured.</div>`;
 
   $("current-listings").innerHTML = (item.current_listings || []).length ? item.current_listings.map((listing) => `
     <div class="compact-row">
-      <div><strong>${fmtMoney(listing.price_each)} × ${fmtNumber(listing.quantity)}</strong><span>${fmtDurationMs(listing.time_left)} · observed ${timeAgo(Date.parse(listing.snapshot_at))}</span></div>
-      <strong>${fmtMoney(listing.total_price)}</strong>
+      <div><strong>${fmtMoney(listing.price_each)} each × ${fmtNumber(listing.quantity)}</strong><span>${fmtMoney(listing.total_price)} total · ${fmtDurationMs(listing.time_left)} · last seen ${timeAgo(Date.parse(listing.snapshot_at))}</span></div>
     </div>
-  `).join("") : `<div class="empty-note">No active asks observed${item.listing_observed_at ? ` in latest scan` : ""}.</div>`;
+  `).join("") : `<div class="empty-note">No listings seen${item.listing_observed_at ? ` in latest scan` : ""}.</div>`;
 }
 
 function recipeDetail(recipe) {
+  const canPriceRecipe = recipe.profit !== null && recipe.profit !== undefined;
+  const recipeStats = [
+    recipe.result_value !== null && recipe.result_value !== undefined ? ["Sell For", fmtMoney(recipe.result_value)] : null,
+    recipe.ingredient_cost !== null && recipe.ingredient_cost !== undefined ? ["Cost to Make", fmtMoney(recipe.ingredient_cost)] : null,
+    recipe.result.sales_count_24h !== null && recipe.result.sales_count_24h !== undefined ? ["Sold Today", fmtNumber(recipe.result.sales_count_24h)] : null,
+    recipe.result.volume_24h !== null && recipe.result.volume_24h !== undefined ? ["Money Traded Today", fmtMoney(recipe.result.volume_24h)] : null,
+  ].filter(Boolean);
   return `
     <div class="recipe-card">
       <div class="recipe-head">
         <div>
           <strong>${recipe.result.name}</strong>
-          <span>${fmtNumber(recipe.result.quantity || 1)} crafted · ${fmtMoney(recipe.result.price_each)} each</span>
+          <span>${fmtNumber(recipe.result.quantity || 1)} crafted${recipe.result.price_each ? ` · ${fmtMoney(recipe.result.price_each)} each` : ""}</span>
         </div>
         <div class="recipe-profit ${profitClass(recipe.profit)}">
-          ${recipe.profit === null || recipe.profit === undefined ? "Unknown" : fmtMoney(recipe.profit)}
-          <span>${recipe.profit_pct === null || recipe.profit_pct === undefined ? "Could Earn" : `${fmtPct(recipe.profit_pct)} could earn`}</span>
+          ${canPriceRecipe ? fmtMoney(recipe.profit) : "Price unknown"}
+          <span>${canPriceRecipe && recipe.profit_pct !== null && recipe.profit_pct !== undefined ? `${fmtPct(recipe.profit_pct)} could earn` : "Not enough sales to estimate"}</span>
         </div>
       </div>
-      <div class="recipe-math">
-        <div>
-          <span>Sell For</span>
-          <strong>${fmtMoney(recipe.result_value)}</strong>
+      ${recipeStats.length ? `
+        <div class="recipe-math">
+          ${recipeStats.map(([label, value]) => `
+            <div>
+              <span>${label}</span>
+              <strong>${value}</strong>
+            </div>
+          `).join("")}
         </div>
-        <div>
-          <span>Cost to Make</span>
-          <strong>${fmtMoney(recipe.ingredient_cost)}</strong>
-        </div>
-        <div>
-          <span>Sold Today</span>
-          <strong>${fmtNumber(recipe.result.sales_count_24h)}</strong>
-        </div>
-        <div>
-          <span>Money Traded Today</span>
-          <strong>${fmtMoney(recipe.result.volume_24h)}</strong>
-        </div>
-      </div>
+      ` : ""}
       <div class="ingredient-list">
         ${recipe.ingredients.map((ingredient) => `
           <div>
@@ -355,7 +363,7 @@ function recipeDetail(recipe) {
           </div>
         `).join("")}
       </div>
-      ${recipe.missing_prices?.length ? `<div class="empty-note">Missing prices: ${recipe.missing_prices.join(", ")}</div>` : ""}
+      ${recipe.missing_prices?.length ? `<div class="empty-note">Not enough recent ${recipe.result.name} sales to estimate earnings.</div>` : ""}
     </div>
   `;
 }
