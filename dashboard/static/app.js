@@ -2,6 +2,7 @@ const state = {
   selectedItemKey: null,
   marketSort: "sales",
   searchTimer: null,
+  chartRange: "24h",
 };
 
 const $ = (id) => document.getElementById(id);
@@ -22,6 +23,28 @@ function fmtMoney(value) {
 
 function fmtAsk(value) {
   return value === null || value === undefined ? "No active asks" : fmtMoney(value);
+}
+
+function timeAgo(ms) {
+  if (!ms) return "-";
+  const seconds = Math.max(0, Math.floor((Date.now() - Number(ms)) / 1000));
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
+function fmtDurationMs(value) {
+  if (value === null || value === undefined) return "";
+  const totalSeconds = Math.max(0, Math.floor(Number(value) / 1000));
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  if (days) return `${days}d ${hours}h left`;
+  if (hours) return `${hours}h ${minutes}m left`;
+  return `${minutes}m left`;
 }
 
 function fmtPct(value) {
@@ -168,7 +191,7 @@ function drawChart(candles) {
   ctx.fillStyle = "#101411";
   ctx.fillRect(0, 0, rect.width, rect.height);
 
-  const prices = candles.map((c) => c.vwap || c.median || c.close).filter((v) => v !== null);
+  const prices = candles.map((c) => c.median || c.vwap || c.close).filter((v) => v !== null);
   if (!prices.length) {
     ctx.fillStyle = "#a5afa9";
     ctx.fillText("No candles yet", 16, 28);
@@ -178,8 +201,16 @@ function drawChart(candles) {
   const pad = { left: 58, right: 18, top: 18, bottom: 34 };
   const width = rect.width - pad.left - pad.right;
   const height = rect.height - pad.top - pad.bottom;
-  const min = Math.min(...prices);
-  const max = Math.max(...prices);
+  const sorted = [...prices].sort((a, b) => a - b);
+  const lowIndex = Math.floor(sorted.length * 0.05);
+  const highIndex = Math.max(lowIndex, Math.ceil(sorted.length * 0.95) - 1);
+  let min = sorted[lowIndex];
+  let max = sorted[highIndex];
+  const excluded = prices.filter((price) => price < min || price > max).length;
+  if (min === max) {
+    min = Math.min(...prices);
+    max = Math.max(...prices);
+  }
   const span = max - min || 1;
 
   ctx.strokeStyle = "#28332d";
@@ -200,7 +231,8 @@ function drawChart(candles) {
   ctx.beginPath();
   prices.forEach((price, index) => {
     const x = pad.left + (width * index) / Math.max(1, prices.length - 1);
-    const y = pad.top + height - ((price - min) / span) * height;
+    const clamped = Math.max(min, Math.min(max, price));
+    const y = pad.top + height - ((clamped - min) / span) * height;
     if (index === 0) ctx.moveTo(x, y);
     else ctx.lineTo(x, y);
   });
@@ -208,11 +240,18 @@ function drawChart(candles) {
 
   ctx.fillStyle = "#a5afa9";
   ctx.font = "12px system-ui";
+  ctx.fillText("PRICE", pad.left, pad.top - 4);
   ctx.fillText(fmtMoney(max), 10, pad.top + 5);
   ctx.fillText(fmtMoney(min), 10, rect.height - pad.bottom);
+  if (excluded) {
+    ctx.fillStyle = "#f2bd55";
+    ctx.fillText(`${excluded} unusual points clipped`, pad.left, pad.top + 16);
+  }
 
   const volumes = candles.map((c) => Number(c.units || 0));
   const maxVol = Math.max(...volumes, 1);
+  ctx.fillStyle = "#a5afa9";
+  ctx.fillText("VOLUME", pad.left, rect.height - 8);
   ctx.fillStyle = "rgba(245, 189, 79, 0.25)";
   volumes.forEach((vol, index) => {
     const x = pad.left + (width * index) / Math.max(1, volumes.length - 1);
@@ -224,9 +263,21 @@ function drawChart(candles) {
 function renderItemDetails(item) {
   $("detail-title").textContent = itemLabel(item);
   $("detail-subtitle").textContent = item.uses?.summary || "Live market data from recent DonutSMP auction sales.";
+  $("detail-item-id").textContent = item.item_id || "";
+  const marketPrice = item.price_each || item.market_value || item.sold_median_24h;
+  $("market-price").textContent = fmtMoney(marketPrice);
+  $("stack-price").textContent = item.price_stack ? `≈ ${fmtMoney(item.price_stack)} / ${fmtNumber(item.max_stack || 64)} stack` : "";
+  $("movement-line").innerHTML = `<span class="${pctClass(item.change_pct)}">${fmtPct(item.change_pct)} 24h vs 7d</span>`;
+  const suggested = item.suggested_prices || {};
+  $("suggested-price").textContent = fmtMoney(suggested.market);
+  $("suggested-stack").textContent = suggested.market && item.max_stack ? `${fmtMoney(suggested.market * item.max_stack)} / stack` : "";
+  $("suggested-modes").innerHTML = [
+    ["Quick", suggested.quick],
+    ["Market", suggested.market],
+    ["Max", suggested.max_profit],
+  ].map(([label, value]) => `<span>${label} ${fmtMoney(value)}</span>`).join("");
+
   $("detail-metrics").innerHTML = [
-    ["Price Each", fmtMoney(item.price_each || item.market_value || item.sold_median_24h)],
-    [`Price / ${fmtNumber(item.max_stack || 64)} Stack`, fmtMoney(item.price_stack)],
     ["Lowest Ask", fmtAsk(item.lowest_listing)],
     ["Current Listings", fmtNumber(item.listing_count)],
     ["Listed Quantity", fmtNumber(item.listed_quantity)],
@@ -275,6 +326,20 @@ function renderItemDetails(item) {
       ${recipe.missing_prices?.length ? `<div class="empty-note">Missing prices: ${recipe.missing_prices.join(", ")}</div>` : ""}
     </div>
   `).join("") : `<div class="empty-note">No known crafting uses added yet.</div>`;
+
+  $("recent-sales").innerHTML = (item.recent_sales || []).length ? item.recent_sales.map((sale) => `
+    <div class="compact-row">
+      <div><strong>${fmtNumber(sale.quantity)} × ${fmtMoney(sale.price_each)}</strong><span>${timeAgo(sale.sold_at_ms)}</span></div>
+      <strong>${fmtMoney(sale.total_price)}</strong>
+    </div>
+  `).join("") : `<div class="empty-note">No recent sales captured.</div>`;
+
+  $("current-listings").innerHTML = (item.current_listings || []).length ? item.current_listings.map((listing) => `
+    <div class="compact-row">
+      <div><strong>${fmtMoney(listing.price_each)} × ${fmtNumber(listing.quantity)}</strong><span>${fmtDurationMs(listing.time_left)} · observed ${timeAgo(Date.parse(listing.snapshot_at))}</span></div>
+      <strong>${fmtMoney(listing.total_price)}</strong>
+    </div>
+  `).join("") : `<div class="empty-note">No active asks observed${item.listing_observed_at ? ` in latest scan` : ""}.</div>`;
 }
 
 async function selectItem(itemKey, options = {}) {
@@ -296,7 +361,7 @@ async function selectItem(itemKey, options = {}) {
       $("item-detail-panel").scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }
-  const item = await api(`/api/item?item_key=${encodeURIComponent(itemKey)}&limit=240`);
+  const item = await api(`/api/item?item_key=${encodeURIComponent(itemKey)}&range=${encodeURIComponent(state.chartRange)}`);
   $("chart-title").textContent = itemLabel(item);
   $("chart-meta").textContent = `${fmtMoney(item.sold_median_24h || item.market_value)} · ${fmtPct(item.change_pct)} 24h vs 7d · ${fmtNumber(item.sales_count_24h)} sales · ${fmtMoney(item.volume_24h)} volume`;
   $("item-badges").innerHTML = [
@@ -383,6 +448,15 @@ window.addEventListener("popstate", () => {
   if (itemKey) {
     selectItem(itemKey, { updateUrl: false, scroll: true });
   }
+});
+
+$("timeframes").querySelectorAll("button").forEach((button) => {
+  button.addEventListener("click", () => {
+    $("timeframes").querySelectorAll("button").forEach((b) => b.classList.remove("active"));
+    button.classList.add("active");
+    state.chartRange = button.dataset.range;
+    if (state.selectedItemKey) selectItem(state.selectedItemKey, { updateUrl: false, scroll: false });
+  });
 });
 
 $("search").addEventListener("input", (event) => {

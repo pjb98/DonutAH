@@ -1,0 +1,48 @@
+Log 23 - Player-focused item page upgrade
+
+Date: 2026-08-15
+
+Changes made:
+- Reworked item pages around the player's main decision: what price to list at.
+- Added a prominent Market Price hero section.
+- Added stack price display below the hero market price.
+- Added Suggested List pricing:
+  - Quick
+  - Market
+  - Max Profit
+- Added timeframe buttons for item charts:
+  - 1H
+  - 6H
+  - 24H
+  - 7D
+  - 30D
+  - ALL
+- Changed chart API requests to use a range parameter instead of a fixed candle limit.
+- Made the chart use median-first candle values and clip extreme outliers for display scale.
+- Added explicit PRICE and VOLUME labels to the chart canvas.
+- Added recent sales to item pages.
+- Added current listings to item pages using the corrected rolling listing view.
+- Formatted listing time_left values as readable durations.
+- Added observed time context for current listing rows.
+- Added Leather crafting recipes:
+  - Book
+  - Item Frame
+  - Leather Helmet
+  - Leather Tunic
+  - Leather Pants
+  - Leather Boots
+- Added a small DonutDex Pro teaser panel below the free item data.
+- Hid the recent-sales/listings panel outside item routes.
+
+Verification:
+- python3 -m py_compile dashboard/server.py passed.
+- node --check dashboard/static/app.js passed.
+- Restarted donut-market-dashboard.service successfully.
+- Verified the Leather item route returns HTTP 200.
+- Verified the Leather item API returns:
+  - suggested_prices
+  - recent_sales
+  - current_listings
+  - listing_observed_at
+  - Leather crafting economics
+- Confirmed donut-market-dashboard.service is active.

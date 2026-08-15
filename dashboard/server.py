@@ -49,6 +49,18 @@ def clamp_limit(value, default=25, maximum=100):
         return default
 
 
+def timeframe_limit(value):
+    limits = {
+        "1h": 60,
+        "6h": 360,
+        "24h": 1440,
+        "7d": 7 * 1440,
+        "30d": 30 * 1440,
+        "all": 2000,
+    }
+    return limits.get((value or "24h").lower(), limits["24h"])
+
+
 def movement_expr():
     return """
         CASE
@@ -256,6 +268,49 @@ def item_uses(item_id):
                 },
             ],
         },
+        "minecraft:leather": {
+            "summary": "Common crafting material used for books, item frames, and leather armor.",
+            "crafting": [
+                {
+                    "result": {"item_id": "minecraft:book", "name": "Book", "quantity": 1},
+                    "ingredients": [
+                        {"item_id": "minecraft:paper", "name": "Paper", "quantity": 3},
+                        {"item_id": "minecraft:leather", "name": "Leather", "quantity": 1},
+                    ],
+                },
+                {
+                    "result": {"item_id": "minecraft:item_frame", "name": "Item Frame", "quantity": 1},
+                    "ingredients": [
+                        {"item_id": "minecraft:stick", "name": "Stick", "quantity": 8},
+                        {"item_id": "minecraft:leather", "name": "Leather", "quantity": 1},
+                    ],
+                },
+                {
+                    "result": {"item_id": "minecraft:leather_helmet", "name": "Leather Helmet", "quantity": 1},
+                    "ingredients": [
+                        {"item_id": "minecraft:leather", "name": "Leather", "quantity": 5},
+                    ],
+                },
+                {
+                    "result": {"item_id": "minecraft:leather_chestplate", "name": "Leather Tunic", "quantity": 1},
+                    "ingredients": [
+                        {"item_id": "minecraft:leather", "name": "Leather", "quantity": 8},
+                    ],
+                },
+                {
+                    "result": {"item_id": "minecraft:leather_leggings", "name": "Leather Pants", "quantity": 1},
+                    "ingredients": [
+                        {"item_id": "minecraft:leather", "name": "Leather", "quantity": 7},
+                    ],
+                },
+                {
+                    "result": {"item_id": "minecraft:leather_boots", "name": "Leather Boots", "quantity": 1},
+                    "ingredients": [
+                        {"item_id": "minecraft:leather", "name": "Leather", "quantity": 4},
+                    ],
+                },
+            ],
+        },
     }
     return uses.get(item_id, {"summary": "", "crafting": []})
 
@@ -335,6 +390,8 @@ def enrich_recipe_economics(conn, uses):
         ingredients = []
         known_cost = 0
         missing_prices = []
+        if result["total_value"] is None:
+            missing_prices.append(result.get("name") or result.get("item_id") or "Result")
         for ingredient in recipe.get("ingredients", []):
             enriched_ingredient = dict(ingredient)
             price = prices.get(ingredient.get("item_id"), {})
@@ -375,6 +432,64 @@ def enrich_recipe_economics(conn, uses):
 
     uses["crafting"] = enriched
     return uses
+
+
+def suggested_prices(stats):
+    market = stats.get("market_value") or stats.get("sold_median_24h") or stats.get("lowest_listing")
+    if market is None:
+        return {"quick": None, "market": None, "max_profit": None}
+    lowest = stats.get("lowest_listing")
+    if lowest is not None and lowest > 0:
+        market_list = min(max(market * 1.02, lowest * 0.99), market * 1.12)
+    else:
+        market_list = market * 1.03
+    return {
+        "quick": round(market * 0.95, 2),
+        "market": round(market_list, 2),
+        "max_profit": round(market * 1.12, 2),
+    }
+
+
+def recent_sales(conn, item_key, limit=12):
+    return rows(
+        conn,
+        """
+        SELECT sold_at_ms, quantity, price_each, total_price, seller_name
+        FROM auction_sales
+        WHERE item_key = ?
+        ORDER BY sold_at_ms DESC
+        LIMIT ?
+        """,
+        (item_key, limit),
+    )
+
+
+def current_listings(conn, item_key, limit=12):
+    return rows(
+        conn,
+        """
+        WITH latest_page_scans AS (
+            SELECT page, MAX(snapshot_at) AS snapshot_at
+            FROM auction_listing_snapshots
+            GROUP BY page
+        )
+        SELECT
+            listings.snapshot_at,
+            listings.quantity,
+            listings.price_each,
+            listings.total_price,
+            listings.seller_name,
+            listings.time_left
+        FROM auction_listing_snapshots listings
+        JOIN latest_page_scans latest
+          ON latest.page = listings.page
+         AND latest.snapshot_at = listings.snapshot_at
+        WHERE listings.item_key = ?
+        ORDER BY listings.price_each ASC, listings.total_price ASC
+        LIMIT ?
+        """,
+        (item_key, limit),
+    )
 
 
 def summary(conn):
@@ -601,7 +716,7 @@ def search(conn, params):
 
 def candles(conn, params):
     item_key = params.get("item_key", [""])[0]
-    limit = clamp_limit(params.get("limit", ["240"])[0], default=240, maximum=2000)
+    limit = timeframe_limit(params.get("range", ["24h"])[0])
     if not item_key:
         return []
     return rows(
@@ -653,8 +768,14 @@ def item_detail(conn, params):
     price_each = stats.get("market_value") or stats.get("sold_median_24h") or stats.get("lowest_listing")
     stats["price_each"] = price_each
     stats["price_stack"] = price_each * stats["max_stack"] if price_each is not None else None
+    stats["suggested_prices"] = suggested_prices(stats)
     stats["uses"] = enrich_recipe_economics(conn, item_uses(stats.get("item_id")))
-    stats["candles"] = candles(conn, {"item_key": [item_key], "limit": [params.get("limit", ["240"])[0]]})
+    stats["candles"] = candles(conn, {"item_key": [item_key], "range": [params.get("range", ["24h"])[0]]})
+    stats["recent_sales"] = recent_sales(conn, item_key)
+    stats["current_listings"] = current_listings(conn, item_key)
+    stats["listing_observed_at"] = (
+        max((row.get("snapshot_at") for row in stats["current_listings"] if row.get("snapshot_at")), default=None)
+    )
     return stats
 
 

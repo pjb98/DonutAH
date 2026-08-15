@@ -77,7 +77,17 @@
               <h2 id="chart-title">Select an item</h2>
               <div class="subtle" id="chart-meta"></div>
             </div>
-            <div id="item-badges" class="badges"></div>
+            <div>
+              <div id="item-badges" class="badges"></div>
+              <div class="timeframes" id="timeframes">
+                <button data-range="1h">1H</button>
+                <button data-range="6h">6H</button>
+                <button data-range="24h" class="active">24H</button>
+                <button data-range="7d">7D</button>
+                <button data-range="30d">30D</button>
+                <button data-range="all">ALL</button>
+              </div>
+            </div>
           </div>
           <canvas id="chart" height="300"></canvas>
         </div>
@@ -91,9 +101,41 @@
             <a class="market-link" href="/">Market</a>
           </div>
           <div class="detail-body">
+            <div class="item-market-hero">
+              <div>
+                <div class="item-id-line" id="detail-item-id"></div>
+                <div class="hero-label">Market Price</div>
+                <div class="market-price" id="market-price">-</div>
+                <div class="stack-price" id="stack-price"></div>
+                <div class="movement-line" id="movement-line"></div>
+              </div>
+              <div class="suggested-box">
+                <span>Suggested List</span>
+                <strong id="suggested-price">-</strong>
+                <small id="suggested-stack"></small>
+                <div class="suggested-modes" id="suggested-modes"></div>
+              </div>
+            </div>
             <div class="detail-metrics" id="detail-metrics"></div>
             <h3>Crafting Uses</h3>
             <div id="crafting-uses" class="uses-list"></div>
+            <div class="pro-panel">
+              <strong>DonutDex Pro</strong>
+              <span>Price alerts, advanced analytics, and deal discovery for this item.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel activity-panel">
+          <div class="activity-grid">
+            <div>
+              <div class="panel-head compact"><h2>Recent Sales</h2></div>
+              <div id="recent-sales" class="compact-list"></div>
+            </div>
+            <div>
+              <div class="panel-head compact"><h2>Current Listings</h2></div>
+              <div id="current-listings" class="compact-list"></div>
+            </div>
           </div>
         </div>
 
