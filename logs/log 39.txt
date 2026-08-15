@@ -1,0 +1,15 @@
+Log 39
+
+Cleaned up remaining speed/advanced-stat style wording.
+
+Changes made:
+- Changed the market sort tab from "Sells Fast" to "Fast Sellers".
+- Updated the dashboard script cache buster to /app.js?v=39.
+
+Verification:
+- Confirmed dashboard/static does not contain visible "How Fast It Sells", "Volatility", or "Sells Fast" wording.
+- Ran node --check dashboard/static/app.js successfully.
+- Restarted donut-market-dashboard successfully.
+- Confirmed the service is active.
+- Confirmed the live homepage serves "Fast Sellers" and /app.js?v=39.
+- Confirmed the live app script does not contain "How Fast It Sells", "Volatility", or "Sells Fast".
