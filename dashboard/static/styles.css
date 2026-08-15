@@ -434,14 +434,8 @@ body.item-route .chart-panel {
   font-size: 17px;
 }
 
-.uses-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
 h3 {
-  margin: 0 0 9px;
+  margin: 6px 0 9px;
   font-size: 13px;
   text-transform: uppercase;
   color: var(--muted);
@@ -452,21 +446,78 @@ h3 {
   gap: 8px;
 }
 
-.use-card {
+.recipe-card {
   border: 1px solid #2d3931;
   border-radius: 7px;
   background: #151b17;
-  padding: 10px;
+  padding: 12px;
 }
 
-.use-card strong {
+.recipe-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.recipe-head strong {
   display: block;
   margin-bottom: 4px;
 }
 
-.use-card span {
+.recipe-head span,
+.ingredient-list small {
   color: var(--muted);
   font-size: 12px;
+}
+
+.recipe-profit {
+  text-align: right;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.recipe-profit span {
+  display: block;
+  margin-top: 3px;
+  color: inherit;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.recipe-math {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(130px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.recipe-math div,
+.ingredient-list div {
+  border: 1px solid #26312b;
+  border-radius: 6px;
+  background: #101411;
+  padding: 9px;
+}
+
+.recipe-math span,
+.ingredient-list span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.recipe-math strong,
+.ingredient-list strong {
+  display: block;
+  margin-top: 4px;
+}
+
+.ingredient-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(130px, 1fr));
+  gap: 8px;
 }
 
 .status {
@@ -506,7 +557,7 @@ h3 {
 
   .market-pulse,
   .detail-metrics,
-  .uses-grid,
+  .ingredient-list,
   .status-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -525,9 +576,18 @@ h3 {
 
   .market-pulse,
   .detail-metrics,
-  .uses-grid,
+  .recipe-math,
+  .ingredient-list,
   .status-grid {
     grid-template-columns: 1fr;
+  }
+
+  .recipe-head {
+    display: grid;
+  }
+
+  .recipe-profit {
+    text-align: left;
   }
 
   .panel-head {

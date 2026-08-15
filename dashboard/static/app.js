@@ -32,6 +32,11 @@ function pctClass(value) {
   return Number(value) >= 0 ? "gain" : "loss";
 }
 
+function profitClass(value) {
+  if (value === null || value === undefined) return "";
+  return Number(value) > 0 ? "gain" : Number(value) < 0 ? "loss" : "";
+}
+
 function itemLabel(row) {
   return row.display_name || (row.item_id || "Unknown").split(":").pop().replaceAll("_", " ");
 }
@@ -216,12 +221,12 @@ function renderItemDetails(item) {
   $("detail-title").textContent = itemLabel(item);
   $("detail-subtitle").textContent = item.uses?.summary || "Live market data from recent DonutSMP auction sales.";
   $("detail-metrics").innerHTML = [
-    ["Market Value", fmtMoney(item.market_value || item.sold_median_24h)],
-    ["24h Median", fmtMoney(item.sold_median_24h)],
+    ["Price Each", fmtMoney(item.price_each || item.market_value || item.sold_median_24h)],
+    [`Price / ${fmtNumber(item.max_stack || 64)} Stack`, fmtMoney(item.price_stack)],
     ["Lowest Ask", fmtMoney(item.lowest_listing)],
+    ["24h Median", fmtMoney(item.sold_median_24h)],
     ["24h Sales", fmtNumber(item.sales_count_24h)],
     ["24h Volume", fmtMoney(item.volume_24h)],
-    ["Listed Quantity", fmtNumber(item.listed_quantity)],
   ].map(([label, value]) => `
     <div>
       <span>${label}</span>
@@ -231,16 +236,39 @@ function renderItemDetails(item) {
 
   const crafts = item.uses?.crafting || [];
   $("crafting-uses").innerHTML = crafts.length ? crafts.map((recipe) => `
-    <div class="use-card">
-      <strong>${recipe.result}</strong>
-      <span>${recipe.ingredients.join(" · ")}</span>
+    <div class="recipe-card">
+      <div class="recipe-head">
+        <div>
+          <strong>${recipe.result.name}</strong>
+          <span>${fmtNumber(recipe.result.quantity || 1)} crafted · ${fmtMoney(recipe.result.price_each)} each</span>
+        </div>
+        <div class="recipe-profit ${profitClass(recipe.profit)}">
+          ${recipe.profit === null || recipe.profit === undefined ? "Unknown" : fmtMoney(recipe.profit)}
+          <span>${recipe.profit_pct === null || recipe.profit_pct === undefined ? "profit" : `${fmtPct(recipe.profit_pct)} profit`}</span>
+        </div>
+      </div>
+      <div class="recipe-math">
+        <div>
+          <span>Output Value</span>
+          <strong>${fmtMoney(recipe.result_value)}</strong>
+        </div>
+        <div>
+          <span>Ingredient Cost</span>
+          <strong>${fmtMoney(recipe.ingredient_cost)}</strong>
+        </div>
+      </div>
+      <div class="ingredient-list">
+        ${recipe.ingredients.map((ingredient) => `
+          <div>
+            <span>${fmtNumber(ingredient.quantity)}x ${ingredient.name}</span>
+            <strong>${fmtMoney(ingredient.total_cost)}</strong>
+            <small>${fmtMoney(ingredient.price_each)} each</small>
+          </div>
+        `).join("")}
+      </div>
+      ${recipe.missing_prices?.length ? `<div class="empty-note">Missing prices: ${recipe.missing_prices.join(", ")}</div>` : ""}
     </div>
   `).join("") : `<div class="empty-note">No known crafting uses added yet.</div>`;
-
-  const notes = item.uses?.notes || [];
-  $("item-notes").innerHTML = notes.length ? notes.map((note) => `
-    <div class="use-card"><span>${note}</span></div>
-  `).join("") : `<div class="empty-note">No special notes added yet.</div>`;
 }
 
 async function selectItem(itemKey, options = {}) {

@@ -75,64 +75,306 @@ def variant_note(item_id):
     return heterogeneous.get(item_id)
 
 
+def max_stack_size(item_id):
+    if not item_id:
+        return 64
+    stack_16 = {
+        "minecraft:egg",
+        "minecraft:ender_pearl",
+        "minecraft:snowball",
+        "minecraft:honey_bottle",
+        "minecraft:armor_stand",
+        "minecraft:sign",
+        "minecraft:oak_sign",
+        "minecraft:spruce_sign",
+        "minecraft:birch_sign",
+        "minecraft:jungle_sign",
+        "minecraft:acacia_sign",
+        "minecraft:dark_oak_sign",
+        "minecraft:mangrove_sign",
+        "minecraft:cherry_sign",
+        "minecraft:bamboo_sign",
+        "minecraft:crimson_sign",
+        "minecraft:warped_sign",
+    }
+    stack_1_suffixes = (
+        "_helmet",
+        "_chestplate",
+        "_leggings",
+        "_boots",
+        "_sword",
+        "_pickaxe",
+        "_axe",
+        "_shovel",
+        "_hoe",
+    )
+    stack_1 = {
+        "minecraft:bow",
+        "minecraft:crossbow",
+        "minecraft:trident",
+        "minecraft:shield",
+        "minecraft:elytra",
+        "minecraft:fishing_rod",
+        "minecraft:shears",
+        "minecraft:flint_and_steel",
+        "minecraft:brush",
+        "minecraft:cake",
+        "minecraft:mushroom_stew",
+        "minecraft:rabbit_stew",
+        "minecraft:beetroot_soup",
+        "minecraft:suspicious_stew",
+        "minecraft:carrot_on_a_stick",
+        "minecraft:warped_fungus_on_a_stick",
+        "minecraft:bucket",
+        "minecraft:water_bucket",
+        "minecraft:lava_bucket",
+        "minecraft:milk_bucket",
+        "minecraft:powder_snow_bucket",
+        "minecraft:minecart",
+        "minecraft:chest_minecart",
+        "minecraft:furnace_minecart",
+        "minecraft:hopper_minecart",
+        "minecraft:tnt_minecart",
+        "minecraft:boat",
+        "minecraft:oak_boat",
+        "minecraft:spruce_boat",
+        "minecraft:birch_boat",
+        "minecraft:jungle_boat",
+        "minecraft:acacia_boat",
+        "minecraft:dark_oak_boat",
+        "minecraft:mangrove_boat",
+        "minecraft:cherry_boat",
+        "minecraft:bamboo_raft",
+        "minecraft:potion",
+        "minecraft:splash_potion",
+        "minecraft:lingering_potion",
+    }
+    if item_id in stack_16:
+        return 16
+    if item_id in stack_1 or item_id.endswith(stack_1_suffixes):
+        return 1
+    return 64
+
+
 def item_uses(item_id):
     uses = {
         "minecraft:egg": {
             "summary": "Ingredient for food crafts and throwable item.",
             "crafting": [
                 {
-                    "result": "Cake",
-                    "ingredients": ["3x Milk Bucket", "2x Sugar", "1x Egg", "3x Wheat"],
+                    "result": {"item_id": "minecraft:cake", "name": "Cake", "quantity": 1},
+                    "ingredients": [
+                        {"item_id": "minecraft:milk_bucket", "name": "Milk Bucket", "quantity": 3},
+                        {"item_id": "minecraft:sugar", "name": "Sugar", "quantity": 2},
+                        {"item_id": "minecraft:egg", "name": "Egg", "quantity": 1},
+                        {"item_id": "minecraft:wheat", "name": "Wheat", "quantity": 3},
+                    ],
                 },
                 {
-                    "result": "Pumpkin Pie",
-                    "ingredients": ["1x Pumpkin", "1x Sugar", "1x Egg"],
+                    "result": {"item_id": "minecraft:pumpkin_pie", "name": "Pumpkin Pie", "quantity": 1},
+                    "ingredients": [
+                        {"item_id": "minecraft:pumpkin", "name": "Pumpkin", "quantity": 1},
+                        {"item_id": "minecraft:sugar", "name": "Sugar", "quantity": 1},
+                        {"item_id": "minecraft:egg", "name": "Egg", "quantity": 1},
+                    ],
                 },
-            ],
-            "notes": [
-                "Can be thrown.",
-                "Thrown eggs have a chance to spawn chicks.",
             ],
         },
         "minecraft:sugar": {
             "summary": "Common cooking and potion ingredient.",
             "crafting": [
-                {"result": "Cake", "ingredients": ["3x Milk Bucket", "2x Sugar", "1x Egg", "3x Wheat"]},
-                {"result": "Pumpkin Pie", "ingredients": ["1x Pumpkin", "1x Sugar", "1x Egg"]},
+                {
+                    "result": {"item_id": "minecraft:cake", "name": "Cake", "quantity": 1},
+                    "ingredients": [
+                        {"item_id": "minecraft:milk_bucket", "name": "Milk Bucket", "quantity": 3},
+                        {"item_id": "minecraft:sugar", "name": "Sugar", "quantity": 2},
+                        {"item_id": "minecraft:egg", "name": "Egg", "quantity": 1},
+                        {"item_id": "minecraft:wheat", "name": "Wheat", "quantity": 3},
+                    ],
+                },
+                {
+                    "result": {"item_id": "minecraft:pumpkin_pie", "name": "Pumpkin Pie", "quantity": 1},
+                    "ingredients": [
+                        {"item_id": "minecraft:pumpkin", "name": "Pumpkin", "quantity": 1},
+                        {"item_id": "minecraft:sugar", "name": "Sugar", "quantity": 1},
+                        {"item_id": "minecraft:egg", "name": "Egg", "quantity": 1},
+                    ],
+                },
             ],
-            "notes": ["Used to brew Swiftness potions."],
         },
         "minecraft:wheat": {
             "summary": "Core farming commodity used in food and animal breeding.",
             "crafting": [
-                {"result": "Bread", "ingredients": ["3x Wheat"]},
-                {"result": "Cake", "ingredients": ["3x Milk Bucket", "2x Sugar", "1x Egg", "3x Wheat"]},
+                {
+                    "result": {"item_id": "minecraft:bread", "name": "Bread", "quantity": 1},
+                    "ingredients": [
+                        {"item_id": "minecraft:wheat", "name": "Wheat", "quantity": 3},
+                    ],
+                },
+                {
+                    "result": {"item_id": "minecraft:cake", "name": "Cake", "quantity": 1},
+                    "ingredients": [
+                        {"item_id": "minecraft:milk_bucket", "name": "Milk Bucket", "quantity": 3},
+                        {"item_id": "minecraft:sugar", "name": "Sugar", "quantity": 2},
+                        {"item_id": "minecraft:egg", "name": "Egg", "quantity": 1},
+                        {"item_id": "minecraft:wheat", "name": "Wheat", "quantity": 3},
+                    ],
+                },
             ],
-            "notes": ["Used to breed cows and sheep."],
         },
         "minecraft:pumpkin": {
             "summary": "Ingredient and utility block.",
             "crafting": [
-                {"result": "Pumpkin Pie", "ingredients": ["1x Pumpkin", "1x Sugar", "1x Egg"]},
-                {"result": "Jack o'Lantern", "ingredients": ["1x Carved Pumpkin", "1x Torch"]},
+                {
+                    "result": {"item_id": "minecraft:pumpkin_pie", "name": "Pumpkin Pie", "quantity": 1},
+                    "ingredients": [
+                        {"item_id": "minecraft:pumpkin", "name": "Pumpkin", "quantity": 1},
+                        {"item_id": "minecraft:sugar", "name": "Sugar", "quantity": 1},
+                        {"item_id": "minecraft:egg", "name": "Egg", "quantity": 1},
+                    ],
+                },
+                {
+                    "result": {"item_id": "minecraft:jack_o_lantern", "name": "Jack o'Lantern", "quantity": 1},
+                    "ingredients": [
+                        {"item_id": "minecraft:carved_pumpkin", "name": "Carved Pumpkin", "quantity": 1},
+                        {"item_id": "minecraft:torch", "name": "Torch", "quantity": 1},
+                    ],
+                },
             ],
-            "notes": ["Carved pumpkins are used for snow golems and iron golems."],
         },
         "minecraft:milk_bucket": {
             "summary": "Consumable utility item and cake ingredient.",
             "crafting": [
-                {"result": "Cake", "ingredients": ["3x Milk Bucket", "2x Sugar", "1x Egg", "3x Wheat"]},
+                {
+                    "result": {"item_id": "minecraft:cake", "name": "Cake", "quantity": 1},
+                    "ingredients": [
+                        {"item_id": "minecraft:milk_bucket", "name": "Milk Bucket", "quantity": 3},
+                        {"item_id": "minecraft:sugar", "name": "Sugar", "quantity": 2},
+                        {"item_id": "minecraft:egg", "name": "Egg", "quantity": 1},
+                        {"item_id": "minecraft:wheat", "name": "Wheat", "quantity": 3},
+                    ],
+                },
             ],
-            "notes": ["Can clear status effects when consumed."],
         },
     }
-    return uses.get(item_id, {"summary": "", "crafting": [], "notes": []})
+    return uses.get(item_id, {"summary": "", "crafting": []})
 
 
 def decorate_items(items):
     for item in items:
         item["variant_note"] = variant_note(item.get("item_id"))
     return items
+
+
+def market_prices(conn, item_ids):
+    if not item_ids:
+        return {}
+    placeholders = ",".join("?" for _ in item_ids)
+    candidates = rows(
+        conn,
+        f"""
+        SELECT
+            item_id,
+            item_key,
+            display_name,
+            sold_median_24h,
+            market_value,
+            lowest_listing,
+            sales_count_24h,
+            volume_24h
+        FROM market_stats
+        WHERE item_id IN ({placeholders})
+        ORDER BY item_id, sales_count_24h DESC, volume_24h DESC
+        """,
+        tuple(item_ids),
+    )
+    prices = {}
+    for row in candidates:
+        item_id = row["item_id"]
+        if item_id in prices:
+            continue
+        price_each = row.get("market_value") or row.get("sold_median_24h") or row.get("lowest_listing")
+        prices[item_id] = {
+            "item_key": row.get("item_key"),
+            "display_name": row.get("display_name"),
+            "price_each": price_each,
+            "market_value": row.get("market_value"),
+            "sold_median_24h": row.get("sold_median_24h"),
+            "lowest_listing": row.get("lowest_listing"),
+            "sales_count_24h": row.get("sales_count_24h"),
+            "volume_24h": row.get("volume_24h"),
+            "max_stack": max_stack_size(item_id),
+        }
+    return prices
+
+
+def enrich_recipe_economics(conn, uses):
+    recipes = uses.get("crafting", [])
+    item_ids = set()
+    for recipe in recipes:
+        result = recipe.get("result", {})
+        if result.get("item_id"):
+            item_ids.add(result["item_id"])
+        for ingredient in recipe.get("ingredients", []):
+            if ingredient.get("item_id"):
+                item_ids.add(ingredient["item_id"])
+
+    prices = market_prices(conn, sorted(item_ids))
+    enriched = []
+    for recipe in recipes:
+        result = dict(recipe.get("result", {}))
+        result_price = prices.get(result.get("item_id"), {})
+        result_quantity = result.get("quantity") or 1
+        result["price_each"] = result_price.get("price_each")
+        result["total_value"] = (
+            result["price_each"] * result_quantity if result["price_each"] is not None else None
+        )
+        result["item_key"] = result_price.get("item_key")
+        result["max_stack"] = result_price.get("max_stack", max_stack_size(result.get("item_id")))
+
+        ingredients = []
+        known_cost = 0
+        missing_prices = []
+        for ingredient in recipe.get("ingredients", []):
+            enriched_ingredient = dict(ingredient)
+            price = prices.get(ingredient.get("item_id"), {})
+            quantity = ingredient.get("quantity") or 1
+            enriched_ingredient["price_each"] = price.get("price_each")
+            enriched_ingredient["total_cost"] = (
+                enriched_ingredient["price_each"] * quantity
+                if enriched_ingredient["price_each"] is not None
+                else None
+            )
+            enriched_ingredient["item_key"] = price.get("item_key")
+            enriched_ingredient["max_stack"] = price.get("max_stack", max_stack_size(ingredient.get("item_id")))
+            if enriched_ingredient["total_cost"] is None:
+                missing_prices.append(enriched_ingredient.get("name") or enriched_ingredient.get("item_id"))
+            else:
+                known_cost += enriched_ingredient["total_cost"]
+            ingredients.append(enriched_ingredient)
+
+        profit = None
+        profit_pct = None
+        if result["total_value"] is not None and not missing_prices:
+            profit = result["total_value"] - known_cost
+            if known_cost > 0:
+                profit_pct = round(profit * 100.0 / known_cost, 2)
+
+        enriched.append(
+            {
+                "result": result,
+                "ingredients": ingredients,
+                "ingredient_cost": known_cost if not missing_prices else None,
+                "result_value": result["total_value"],
+                "profit": profit,
+                "profit_pct": profit_pct,
+                "profitable": profit is not None and profit > 0,
+                "missing_prices": missing_prices,
+            }
+        )
+
+    uses["crafting"] = enriched
+    return uses
 
 
 def summary(conn):
@@ -407,7 +649,11 @@ def item_detail(conn, params):
     if not stats:
         return None
     stats["variant_note"] = variant_note(stats.get("item_id"))
-    stats["uses"] = item_uses(stats.get("item_id"))
+    stats["max_stack"] = max_stack_size(stats.get("item_id"))
+    price_each = stats.get("market_value") or stats.get("sold_median_24h") or stats.get("lowest_listing")
+    stats["price_each"] = price_each
+    stats["price_stack"] = price_each * stats["max_stack"] if price_each is not None else None
+    stats["uses"] = enrich_recipe_economics(conn, item_uses(stats.get("item_id")))
     stats["candles"] = candles(conn, {"item_key": [item_key], "limit": [params.get("limit", ["240"])[0]]})
     return stats
 

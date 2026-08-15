@@ -1,0 +1,36 @@
+Log 20 - Recipe profitability and stack-aware item prices
+
+Date: 2026-08-15
+
+Changes made:
+- Removed the Notes section from item pages.
+- Changed crafting recipe data from plain text into structured result and ingredient records.
+- Added recipe economics to the /api/item response:
+  - Result item market price
+  - Result total value
+  - Ingredient price each
+  - Ingredient total cost
+  - Total recipe ingredient cost
+  - Estimated profit
+  - Profit percentage
+  - Missing price list when any ingredient/result is not priced
+- Added stack-aware pricing to item detail responses:
+  - max_stack
+  - price_each
+  - price_stack
+- Added stack size logic:
+  - Most items default to 64.
+  - Eggs, ender pearls, snowballs, honey bottles, signs, and armor stands use 16.
+  - Armor, tools, weapons, buckets, boats, minecarts, cake, stews, potions, and similar items use 1.
+- Updated the item page metrics to show Price Each and Price / Stack.
+- Updated crafting cards to show output value, ingredient cost, ingredients, and profit/loss.
+
+Verification:
+- python3 -m py_compile dashboard/server.py passed.
+- node --check dashboard/static/app.js passed.
+- Restarted donut-market-dashboard.service successfully.
+- Verified Egg API data includes max_stack 16, price_each 625, and price_stack 10000.
+- Verified Cake result is treated as max_stack 1.
+- Verified Egg recipes include ingredient cost, result value, profit, and profit percentage.
+- Verified /api/search?q=egg still returns Egg first.
+- Confirmed donut-market-dashboard.service is active.
