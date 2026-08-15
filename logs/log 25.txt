@@ -1,0 +1,17 @@
+Log 25 - One-at-a-time crafting recipe display
+
+Date: 2026-08-15
+
+Changes made:
+- Changed the Crafting Uses section to show only one detailed recipe at a time.
+- Kept all craftable outputs visible as clickable recipe selectors.
+- Highlighted the active recipe selector.
+- Clicking a recipe selector replaces the detailed profitability/ingredient breakdown without refetching the page.
+- Recipe selectors show the recipe result name and margin/pricing status.
+
+Verification:
+- node --check dashboard/static/app.js passed.
+- Restarted donut-market-dashboard.service successfully.
+- Verified /item/minecraft%3Aleather returns HTTP 200.
+- Verified /api/item?item_key=minecraft%3Aleather still returns Leather crafting recipes.
+- Confirmed donut-market-dashboard.service is active.

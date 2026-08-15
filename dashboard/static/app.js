@@ -292,7 +292,25 @@ function renderItemDetails(item) {
   `).join("");
 
   const crafts = item.uses?.crafting || [];
-  $("crafting-uses").innerHTML = crafts.length ? crafts.map((recipe) => `
+  renderCraftingUses(crafts, 0);
+
+  $("recent-sales").innerHTML = (item.recent_sales || []).length ? item.recent_sales.map((sale) => `
+    <div class="compact-row">
+      <div><strong>${fmtNumber(sale.quantity)} × ${fmtMoney(sale.price_each)}</strong><span>${timeAgo(sale.sold_at_ms)}</span></div>
+      <strong>${fmtMoney(sale.total_price)}</strong>
+    </div>
+  `).join("") : `<div class="empty-note">No recent sales captured.</div>`;
+
+  $("current-listings").innerHTML = (item.current_listings || []).length ? item.current_listings.map((listing) => `
+    <div class="compact-row">
+      <div><strong>${fmtMoney(listing.price_each)} × ${fmtNumber(listing.quantity)}</strong><span>${fmtDurationMs(listing.time_left)} · observed ${timeAgo(Date.parse(listing.snapshot_at))}</span></div>
+      <strong>${fmtMoney(listing.total_price)}</strong>
+    </div>
+  `).join("") : `<div class="empty-note">No active asks observed${item.listing_observed_at ? ` in latest scan` : ""}.</div>`;
+}
+
+function recipeDetail(recipe) {
+  return `
     <div class="recipe-card">
       <div class="recipe-head">
         <div>
@@ -325,33 +343,29 @@ function renderItemDetails(item) {
       </div>
       ${recipe.missing_prices?.length ? `<div class="empty-note">Missing prices: ${recipe.missing_prices.join(", ")}</div>` : ""}
     </div>
-  `).join("") : `<div class="empty-note">No known crafting uses added yet.</div>`;
-  if (crafts.length) {
-    $("crafting-uses").insertAdjacentHTML("afterbegin", `
-      <div class="craft-result-grid">
-        ${crafts.map((recipe) => `
-          <div class="craft-result">
-            <strong>${recipe.result.name}</strong>
-            <span>${recipe.profit === null || recipe.profit === undefined ? "Pricing incomplete" : `${fmtMoney(recipe.profit)} margin`}</span>
-          </div>
-        `).join("")}
-      </div>
-    `);
+  `;
+}
+
+function renderCraftingUses(crafts, selectedIndex) {
+  if (!crafts.length) {
+    $("crafting-uses").innerHTML = `<div class="empty-note">No known crafting uses added yet.</div>`;
+    return;
   }
-
-  $("recent-sales").innerHTML = (item.recent_sales || []).length ? item.recent_sales.map((sale) => `
-    <div class="compact-row">
-      <div><strong>${fmtNumber(sale.quantity)} × ${fmtMoney(sale.price_each)}</strong><span>${timeAgo(sale.sold_at_ms)}</span></div>
-      <strong>${fmtMoney(sale.total_price)}</strong>
+  const active = Math.max(0, Math.min(selectedIndex, crafts.length - 1));
+  $("crafting-uses").innerHTML = `
+    <div class="craft-result-grid">
+      ${crafts.map((recipe, index) => `
+        <button class="craft-result ${index === active ? "active" : ""}" data-recipe-index="${index}">
+          <strong>${recipe.result.name}</strong>
+          <span>${recipe.profit === null || recipe.profit === undefined ? "Pricing incomplete" : `${fmtMoney(recipe.profit)} margin`}</span>
+        </button>
+      `).join("")}
     </div>
-  `).join("") : `<div class="empty-note">No recent sales captured.</div>`;
-
-  $("current-listings").innerHTML = (item.current_listings || []).length ? item.current_listings.map((listing) => `
-    <div class="compact-row">
-      <div><strong>${fmtMoney(listing.price_each)} × ${fmtNumber(listing.quantity)}</strong><span>${fmtDurationMs(listing.time_left)} · observed ${timeAgo(Date.parse(listing.snapshot_at))}</span></div>
-      <strong>${fmtMoney(listing.total_price)}</strong>
-    </div>
-  `).join("") : `<div class="empty-note">No active asks observed${item.listing_observed_at ? ` in latest scan` : ""}.</div>`;
+    <div id="selected-recipe">${recipeDetail(crafts[active])}</div>
+  `;
+  $("crafting-uses").querySelectorAll("[data-recipe-index]").forEach((button) => {
+    button.addEventListener("click", () => renderCraftingUses(crafts, Number(button.dataset.recipeIndex)));
+  });
 }
 
 async function selectItem(itemKey, options = {}) {
