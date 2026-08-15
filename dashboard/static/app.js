@@ -375,7 +375,7 @@ function renderItemDetails(item) {
   `;
 
   $("detail-metrics").innerHTML = [
-    ["Typical Price", fmtMoney(item.sold_median_24h)],
+    ["Usual Price", fmtMoney(item.sold_median_24h)],
     ["Cheapest Now", fmtListing(item.lowest_listing)],
     ["Times Sold Today", fmtNumber(item.sales_count_24h)],
     ["Listings Now", fmtNumber(item.listing_count)],

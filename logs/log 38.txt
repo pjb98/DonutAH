@@ -1,0 +1,16 @@
+Log 38
+
+Replaced remaining "Typical Price" and liquidity-style wording in the public UI.
+
+Changes made:
+- Changed item-page "Typical Price" to "Usual Price".
+- Changed the market sort tab from "Easy to Sell" to "Sells Fast".
+- Updated the dashboard script cache buster to /app.js?v=38.
+
+Verification:
+- Confirmed dashboard/static no longer contains visible "Typical Price", "Liquidity", or "Easy to Sell" wording.
+- Ran node --check dashboard/static/app.js successfully.
+- Restarted donut-market-dashboard successfully.
+- Confirmed the service is active.
+- Confirmed the live homepage serves "Sells Fast" and /app.js?v=38.
+- Confirmed the live app script serves "Usual Price".
