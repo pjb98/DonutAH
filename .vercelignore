@@ -1,0 +1,9 @@
+*.sqlite
+*.sqlite-*
+.env
+.env.*
+__pycache__/
+.git/
+logs/
+api_findings.md
+suggestions.txt

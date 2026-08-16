@@ -1,0 +1,31 @@
+Vercel share URL setup - 2026-08-16
+
+Goal:
+Use Vercel to get a free public *.vercel.app URL without moving the collector,
+database, or dashboard backend off the VPS.
+
+Added:
+- vercel.json
+- .vercelignore
+
+Vercel approach:
+- Vercel will act as a reverse proxy.
+- All incoming paths are rewritten to the existing VPS dashboard:
+  http://147.93.176.190:8095
+
+This keeps the current architecture:
+- collector remains on the VPS
+- SQLite database remains on the VPS
+- dashboard API remains on the VPS
+- Vercel only provides the public share URL/proxy layer
+
+Important:
+- .vercelignore excludes SQLite files, env files, logs, cache files, and notes.
+- This prevents the huge local database from being uploaded if Vercel CLI is
+  used from the repo.
+
+Follow-up needed:
+- Create/import the GitHub repo in Vercel.
+- Deploy from GitHub or with Vercel CLI.
+- After the final Vercel URL is known, update OAuth provider callback URLs if
+  login should work through the Vercel URL.
