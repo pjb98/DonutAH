@@ -89,14 +89,18 @@ def now_iso():
 
 def connect(db_path):
     uri = f"file:{db_path}?mode=ro"
-    conn = sqlite3.connect(uri, uri=True, timeout=5)
+    conn = sqlite3.connect(uri, uri=True, timeout=30)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA busy_timeout = 30000")
     return conn
 
 
 def connect_write(db_path):
-    conn = sqlite3.connect(db_path, timeout=10)
+    conn = sqlite3.connect(db_path, timeout=30)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute("PRAGMA busy_timeout = 30000")
+    conn.execute("PRAGMA synchronous = NORMAL")
     conn.execute("PRAGMA foreign_keys = ON")
     ensure_account_tables(conn)
     return conn

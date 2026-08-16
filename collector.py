@@ -138,8 +138,11 @@ def fetch_json(path, api_key, timeout=20):
 
 
 def connect(db_path):
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, timeout=60)
     conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute("PRAGMA busy_timeout = 60000")
+    conn.execute("PRAGMA synchronous = NORMAL")
+    conn.execute("PRAGMA wal_autocheckpoint = 1000")
     conn.execute("PRAGMA foreign_keys = ON")
     conn.executescript(
         """

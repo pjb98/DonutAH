@@ -1,0 +1,55 @@
+Collector lock recovery - 2026-08-16
+
+Checked donut-market.service and found it was still running, but unhealthy.
+Recent logs showed repeated:
+collector_error=database is locked
+
+The database had stopped receiving sales at:
+2026-08-16T02:24:30+00:00
+
+At the time of inspection, the database files were:
+- donut_market.sqlite: about 9.5G
+- donut_market.sqlite-wal: about 9.5G
+- donut_market.sqlite-shm: about 19M
+
+Root filesystem before cleanup:
+- 60G used
+- 12G free
+- 84% full
+
+Cause/fix:
+- The collector SQLite connection used the default lock timeout.
+- The dashboard and collector both access the same SQLite database.
+- Added explicit busy timeout and WAL-friendly pragmas to the collector.
+- Added matching busy timeout and WAL settings to dashboard write connections.
+
+Maintenance performed:
+- Stopped donut-market.service.
+- Stopped donut-market-dashboard.service.
+- Ran a WAL truncate checkpoint with no app processes attached.
+- Restarted donut-market-dashboard.service.
+- Restarted donut-market.service.
+
+After checkpoint:
+- WAL file was removed and then recreated normally.
+- Main DB was about 9.4G.
+- WAL was about 23M shortly after restart.
+
+Root filesystem after cleanup:
+- 51G used
+- 22G free
+- 71% full
+
+Collector recovery verification:
+- donut-market.service active
+- donut-market-dashboard.service active
+- first recovered collector poll inserted 1,000 new transactions
+- next poll saw 1,000 transactions and inserted 0, meaning overlap/dedup was working
+
+Latest verified sale after recovery:
+2026-08-16T14:46:55+00:00
+
+Important note:
+There is a data gap between the last old sale and the first recovered sale.
+Because Donut only exposes a short recent transaction window, sales during the
+lock outage likely cannot be recovered from the current API.
