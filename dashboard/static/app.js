@@ -123,7 +123,7 @@ function escapeHtml(value) {
 }
 
 function itemLabel(row) {
-  return row.display_name || (row.item_id || "Unknown").split(":").pop().replaceAll("_", " ");
+  return row?.display_name || row?.name || (row?.item_id || "Unknown").split(":").pop().replaceAll("_", " ");
 }
 
 function itemId(row) {
@@ -131,60 +131,27 @@ function itemId(row) {
   return row?.item_id || row?.id || row?.item?.item_id || "";
 }
 
-function iconData(row) {
-  const id = itemId(row);
-  const name = itemLabel(row).toLowerCase();
-  const exact = {
-    "minecraft:leather": ["🟫", "#7d4d30"],
-    "minecraft:leather_helmet": ["🧢", "#7d4d30"],
-    "minecraft:leather_chestplate": ["🧥", "#7d4d30"],
-    "minecraft:leather_leggings": ["👖", "#7d4d30"],
-    "minecraft:leather_boots": ["🥾", "#7d4d30"],
-    "minecraft:diamond": ["💎", "#3ccfe0"],
-    "minecraft:emerald": ["◆", "#21a854"],
-    "minecraft:gold_ingot": ["▰", "#e0ad31"],
-    "minecraft:iron_ingot": ["▰", "#c7c9c2"],
-    "minecraft:netherite_ingot": ["▰", "#3b3234"],
-    "minecraft:egg": ["🥚", "#e8dfc8"],
-    "minecraft:paper": ["📄", "#dfd6ba"],
-    "minecraft:item_frame": ["🖼️", "#a36b38"],
-    "minecraft:stick": ["╱", "#8b5b2e"],
-    "minecraft:string": ["⌁", "#d8d8d8"],
-    "minecraft:obsidian": ["▣", "#221a34"],
-    "minecraft:totem_of_undying": ["☥", "#d3a83e"],
-    "minecraft:elytra": ["◢", "#6d7480"],
-    "minecraft:spawner": ["▦", "#45545c"],
-    "minecraft:dirt": ["▦", "#765039"],
-    "minecraft:grass_block": ["▦", "#527c36"],
-    "minecraft:oak_planks": ["▤", "#a2723a"],
-    "minecraft:chest": ["▤", "#b5792e"],
-    "minecraft:shulker_box": ["▣", "#b77dcc"],
-    "minecraft:filled_map": ["▧", "#6a8a55"],
-  };
-  if (exact[id]) return exact[id];
-  if (id.includes("diamond")) return ["◆", "#3ccfe0"];
-  if (id.includes("emerald")) return ["◆", "#21a854"];
-  if (id.includes("gold")) return ["▰", "#e0ad31"];
-  if (id.includes("iron")) return ["▰", "#c7c9c2"];
-  if (id.includes("netherite")) return ["▰", "#3b3234"];
-  if (id.includes("leather")) return ["🟫", "#7d4d30"];
-  if (id.includes("egg") || name.includes("egg")) return ["🥚", "#e8dfc8"];
-  if (id.includes("sword")) return ["⚔", "#7e8790"];
-  if (id.includes("pickaxe")) return ["⛏", "#7e8790"];
-  if (id.includes("axe")) return ["🪓", "#7e8790"];
-  if (id.includes("helmet")) return ["◠", "#7e8790"];
-  if (id.includes("chestplate")) return ["▣", "#7e8790"];
-  if (id.includes("leggings")) return ["▥", "#7e8790"];
-  if (id.includes("boots")) return ["▴", "#7e8790"];
-  if (id.includes("potion")) return ["⚗", "#9b6ee8"];
-  if (id.includes("map")) return ["▧", "#6a8a55"];
-  return ["▣", "#5f6f66"];
+function minecraftIconId(row) {
+  const id = itemId(row).replace(/^minecraft:/, "");
+  if (id) return id;
+  return itemLabel(row).toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+function iconFallbackLabel(row) {
+  const label = itemLabel(row).trim();
+  return label ? label[0].toUpperCase() : "?";
 }
 
 function itemIcon(row, size = "") {
-  const [glyph, color] = iconData(row);
   const label = escapeHtml(itemLabel(row));
-  return `<span class="item-icon ${size}" style="--icon-color:${color}" aria-label="${label} icon">${escapeHtml(glyph)}</span>`;
+  const iconId = encodeURIComponent(minecraftIconId(row));
+  const fallback = escapeHtml(iconFallbackLabel(row));
+  return `
+    <span class="item-icon ${size}" aria-label="${label} icon">
+      <img src="https://mc-icons.com/thumbs/${iconId}.png" alt="" loading="lazy" decoding="async" onerror="this.remove(); this.parentElement.classList.add('missing-icon');">
+      <span>${fallback}</span>
+    </span>
+  `;
 }
 
 function itemNameHtml(row, subtext = "", size = "") {

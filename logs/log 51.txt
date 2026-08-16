@@ -1,0 +1,35 @@
+Minecraft item icon update - 2026-08-16
+
+Goal:
+Replace emoji-style item icons with actual Minecraft item pictures loaded online.
+
+Source:
+MC Icons
+https://mc-icons.com
+
+Implementation:
+- Replaced the hardcoded emoji/color icon map in dashboard/static/app.js.
+- Item icons now derive an icon id from the Minecraft item id.
+- Example:
+  minecraft:diamond -> diamond
+  minecraft:leather_chestplate -> leather_chestplate
+- Images load from:
+  https://mc-icons.com/thumbs/{item_id}.png
+
+Why this URL pattern:
+- The direct /download endpoint worked but returned rate-limit headers.
+- The /thumbs/{id}.png path returns cache headers and is better for tables
+  with many item icons.
+
+UI changes:
+- Updated .item-icon styles to render transparent PNG textures.
+- Enabled pixelated rendering so the icons keep the Minecraft look.
+- Added a text fallback if a texture URL does not exist.
+- Updated recipe/item label handling so crafting result objects with "name"
+  render correctly.
+- Bumped app.js cache version in index.html from v=44 to v=45.
+
+Verification:
+- node --check dashboard/static/app.js passed.
+- Verified MC Icons diamond thumbnail returns image/png.
+- Verified the running dashboard serves the updated app.js and styles.css.
