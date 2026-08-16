@@ -1,0 +1,31 @@
+Vercel 404 rewrite adjustment - 2026-08-16
+
+Issue:
+User reported a 404 when visiting the Vercel website.
+
+Checked:
+- Existing VPS dashboard responds with 200 OK at:
+  http://147.93.176.190:8095/
+- Local dashboard responds with 200 OK at:
+  http://127.0.0.1:8095/
+
+Likely cause:
+The Vercel proxy config may not have matched the root path "/" in the deployed
+project, or Vercel may need a clearer root route.
+
+Change:
+Updated vercel.json to add an explicit root rewrite:
+
+/
+-> http://147.93.176.190:8095/
+
+Kept the catch-all rewrite:
+
+/:path*
+-> http://147.93.176.190:8095/:path*
+
+Also verified vercel.json parses as valid JSON.
+
+Follow-up:
+Redeploy the latest GitHub commit on Vercel. If it still 404s, confirm the
+Vercel project's Root Directory is the repository root, not dashboard/.
