@@ -25,6 +25,7 @@ OAUTH_STATE_TTL_SECONDS = 60 * 10
 EXCLUDED_ITEM_IDS = {
     "minecraft:book",
     "minecraft:enchanted_book",
+    "minecraft:filled_map",
     "minecraft:writable_book",
     "minecraft:written_book",
     "minecraft:knowledge_book",
@@ -856,13 +857,14 @@ def player_transaction_history(conn, minecraft_name, limit=100):
     limited = max(1, min(200, int(limit or 100)))
     seller_summary = one(
         conn,
-        """
+        f"""
         SELECT
             COUNT(*) AS sales,
             COALESCE(SUM(quantity), 0) AS items,
             COALESCE(SUM(total_price), 0) AS money
         FROM auction_sales
         WHERE lower(seller_name) = lower(?)
+          AND {excluded_sql()}
         """,
         (minecraft_name,),
     )
@@ -872,6 +874,7 @@ def player_transaction_history(conn, minecraft_name, limit=100):
         SELECT sold_at_ms, item_key, item_id, display_name, quantity, price_each, total_price
         FROM auction_sales
         WHERE lower(seller_name) = lower(?)
+          AND {excluded_sql()}
         ORDER BY sold_at_ms DESC
         LIMIT ?
         """,

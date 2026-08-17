@@ -1,0 +1,30 @@
+Filled map removal - 2026-08-17
+
+Reason:
+Filled maps are player-created artwork. Donut's API generalizes them as
+minecraft:filled_map, so combining all filled maps into one market creates
+misleading and not-useful price data.
+
+Change:
+Added minecraft:filled_map to the dashboard excluded item list.
+
+Effect:
+Filled maps are now filtered from:
+- search
+- market tables
+- movers/gainers/losers
+- opportunities
+- direct item detail responses
+- account transaction summaries and account sales lists
+
+The raw collector data is not deleted. The dashboard simply stops showing filled
+maps as a market item.
+
+Verification:
+- python3 -m py_compile dashboard/server.py passed.
+- dashboard service restarted and is active.
+- Direct function checks showed:
+  search_filled_map_hits=0
+  market_filled_map_hits=0
+  opportunity_filled_map_hits=0
+  direct_item_detail_is_none=True
