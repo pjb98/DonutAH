@@ -66,9 +66,135 @@ OAUTH_PROVIDERS = {
     },
 }
 
+VILLAGER_TRADE_ITEMS = [
+    {"profession": "Armorer", "level": "Apprentice", "item_id": "minecraft:bell"},
+    {"profession": "Armorer", "level": "Journeyman", "item_id": "minecraft:chainmail_leggings"},
+    {"profession": "Armorer", "level": "Journeyman", "item_id": "minecraft:chainmail_boots"},
+    {"profession": "Armorer", "level": "Expert", "item_id": "minecraft:chainmail_helmet"},
+    {"profession": "Armorer", "level": "Expert", "item_id": "minecraft:chainmail_chestplate"},
+    {"profession": "Armorer", "level": "Expert", "item_id": "minecraft:shield"},
+    {"profession": "Armorer", "level": "Master", "item_id": "minecraft:diamond_leggings"},
+    {"profession": "Armorer", "level": "Master", "item_id": "minecraft:diamond_boots"},
+    {"profession": "Armorer", "level": "Master", "item_id": "minecraft:diamond_helmet"},
+    {"profession": "Armorer", "level": "Master", "item_id": "minecraft:diamond_chestplate"},
+    {"profession": "Butcher", "level": "Apprentice", "item_id": "minecraft:rabbit_stew"},
+    {"profession": "Butcher", "level": "Journeyman", "item_id": "minecraft:cooked_porkchop"},
+    {"profession": "Butcher", "level": "Expert", "item_id": "minecraft:cooked_chicken"},
+    {"profession": "Cartographer", "level": "Novice", "item_id": "minecraft:map"},
+    {"profession": "Cartographer", "level": "Apprentice", "item_id": "minecraft:ocean_explorer_map"},
+    {"profession": "Cartographer", "level": "Apprentice", "item_id": "minecraft:woodland_explorer_map"},
+    {"profession": "Cartographer", "level": "Journeyman", "item_id": "minecraft:item_frame"},
+    {"profession": "Cartographer", "level": "Expert", "item_id": "minecraft:banner"},
+    {"profession": "Cartographer", "level": "Master", "item_id": "minecraft:globe_banner_pattern"},
+    {"profession": "Cleric", "level": "Novice", "item_id": "minecraft:redstone"},
+    {"profession": "Cleric", "level": "Apprentice", "item_id": "minecraft:lapis_lazuli"},
+    {"profession": "Cleric", "level": "Journeyman", "item_id": "minecraft:glowstone"},
+    {"profession": "Cleric", "level": "Expert", "item_id": "minecraft:ender_pearl"},
+    {"profession": "Cleric", "level": "Master", "item_id": "minecraft:experience_bottle"},
+    {"profession": "Farmer", "level": "Novice", "item_id": "minecraft:bread"},
+    {"profession": "Farmer", "level": "Apprentice", "item_id": "minecraft:pumpkin_pie"},
+    {"profession": "Farmer", "level": "Journeyman", "item_id": "minecraft:apple"},
+    {"profession": "Farmer", "level": "Expert", "item_id": "minecraft:cookie"},
+    {"profession": "Farmer", "level": "Master", "item_id": "minecraft:cake"},
+    {"profession": "Fisherman", "level": "Novice", "item_id": "minecraft:bucket"},
+    {"profession": "Fisherman", "level": "Apprentice", "item_id": "minecraft:cooked_cod"},
+    {"profession": "Fisherman", "level": "Journeyman", "item_id": "minecraft:campfire"},
+    {"profession": "Fisherman", "level": "Expert", "item_id": "minecraft:fishing_rod"},
+    {"profession": "Fletcher", "level": "Novice", "item_id": "minecraft:arrow"},
+    {"profession": "Fletcher", "level": "Apprentice", "item_id": "minecraft:bow"},
+    {"profession": "Fletcher", "level": "Journeyman", "item_id": "minecraft:crossbow"},
+    {"profession": "Fletcher", "level": "Master", "item_id": "minecraft:tipped_arrow"},
+    {"profession": "Leatherworker", "level": "Novice", "item_id": "minecraft:leather_leggings"},
+    {"profession": "Leatherworker", "level": "Apprentice", "item_id": "minecraft:leather_chestplate"},
+    {"profession": "Leatherworker", "level": "Journeyman", "item_id": "minecraft:leather_helmet"},
+    {"profession": "Leatherworker", "level": "Journeyman", "item_id": "minecraft:leather_boots"},
+    {"profession": "Leatherworker", "level": "Expert", "item_id": "minecraft:leather_horse_armor"},
+    {"profession": "Leatherworker", "level": "Master", "item_id": "minecraft:saddle"},
+    {"profession": "Librarian", "level": "Apprentice", "item_id": "minecraft:lantern"},
+    {"profession": "Librarian", "level": "Journeyman", "item_id": "minecraft:glass"},
+    {"profession": "Librarian", "level": "Expert", "item_id": "minecraft:clock"},
+    {"profession": "Librarian", "level": "Expert", "item_id": "minecraft:compass"},
+    {"profession": "Librarian", "level": "Master", "item_id": "minecraft:name_tag"},
+    {"profession": "Mason", "level": "Novice", "item_id": "minecraft:brick"},
+    {"profession": "Mason", "level": "Apprentice", "item_id": "minecraft:chiseled_stone_bricks"},
+    {"profession": "Mason", "level": "Journeyman", "item_id": "minecraft:polished_andesite"},
+    {"profession": "Mason", "level": "Journeyman", "item_id": "minecraft:polished_diorite"},
+    {"profession": "Mason", "level": "Journeyman", "item_id": "minecraft:polished_granite"},
+    {"profession": "Mason", "level": "Expert", "item_id": "minecraft:terracotta"},
+    {"profession": "Mason", "level": "Expert", "item_id": "minecraft:white_glazed_terracotta"},
+    {"profession": "Mason", "level": "Expert", "item_id": "minecraft:orange_glazed_terracotta"},
+    {"profession": "Mason", "level": "Expert", "item_id": "minecraft:magenta_glazed_terracotta"},
+    {"profession": "Mason", "level": "Expert", "item_id": "minecraft:light_blue_glazed_terracotta"},
+    {"profession": "Mason", "level": "Expert", "item_id": "minecraft:yellow_glazed_terracotta"},
+    {"profession": "Mason", "level": "Expert", "item_id": "minecraft:lime_glazed_terracotta"},
+    {"profession": "Mason", "level": "Expert", "item_id": "minecraft:pink_glazed_terracotta"},
+    {"profession": "Mason", "level": "Expert", "item_id": "minecraft:gray_glazed_terracotta"},
+    {"profession": "Mason", "level": "Expert", "item_id": "minecraft:light_gray_glazed_terracotta"},
+    {"profession": "Mason", "level": "Expert", "item_id": "minecraft:cyan_glazed_terracotta"},
+    {"profession": "Mason", "level": "Expert", "item_id": "minecraft:purple_glazed_terracotta"},
+    {"profession": "Mason", "level": "Expert", "item_id": "minecraft:blue_glazed_terracotta"},
+    {"profession": "Mason", "level": "Expert", "item_id": "minecraft:brown_glazed_terracotta"},
+    {"profession": "Mason", "level": "Expert", "item_id": "minecraft:green_glazed_terracotta"},
+    {"profession": "Mason", "level": "Expert", "item_id": "minecraft:red_glazed_terracotta"},
+    {"profession": "Mason", "level": "Expert", "item_id": "minecraft:black_glazed_terracotta"},
+    {"profession": "Mason", "level": "Master", "item_id": "minecraft:quartz_block"},
+    {"profession": "Shepherd", "level": "Apprentice", "item_id": "minecraft:shears"},
+    {"profession": "Shepherd", "level": "Apprentice", "item_id": "minecraft:white_wool"},
+    {"profession": "Shepherd", "level": "Apprentice", "item_id": "minecraft:orange_wool"},
+    {"profession": "Shepherd", "level": "Apprentice", "item_id": "minecraft:magenta_wool"},
+    {"profession": "Shepherd", "level": "Apprentice", "item_id": "minecraft:light_blue_wool"},
+    {"profession": "Shepherd", "level": "Apprentice", "item_id": "minecraft:yellow_wool"},
+    {"profession": "Shepherd", "level": "Apprentice", "item_id": "minecraft:lime_wool"},
+    {"profession": "Shepherd", "level": "Apprentice", "item_id": "minecraft:pink_wool"},
+    {"profession": "Shepherd", "level": "Apprentice", "item_id": "minecraft:gray_wool"},
+    {"profession": "Shepherd", "level": "Apprentice", "item_id": "minecraft:light_gray_wool"},
+    {"profession": "Shepherd", "level": "Apprentice", "item_id": "minecraft:cyan_wool"},
+    {"profession": "Shepherd", "level": "Apprentice", "item_id": "minecraft:purple_wool"},
+    {"profession": "Shepherd", "level": "Apprentice", "item_id": "minecraft:blue_wool"},
+    {"profession": "Shepherd", "level": "Apprentice", "item_id": "minecraft:brown_wool"},
+    {"profession": "Shepherd", "level": "Apprentice", "item_id": "minecraft:green_wool"},
+    {"profession": "Shepherd", "level": "Apprentice", "item_id": "minecraft:red_wool"},
+    {"profession": "Shepherd", "level": "Apprentice", "item_id": "minecraft:black_wool"},
+    {"profession": "Shepherd", "level": "Expert", "item_id": "minecraft:painting"},
+    {"profession": "Shepherd", "level": "Master", "item_id": "minecraft:white_banner"},
+    {"profession": "Shepherd", "level": "Master", "item_id": "minecraft:orange_banner"},
+    {"profession": "Shepherd", "level": "Master", "item_id": "minecraft:magenta_banner"},
+    {"profession": "Shepherd", "level": "Master", "item_id": "minecraft:light_blue_banner"},
+    {"profession": "Shepherd", "level": "Master", "item_id": "minecraft:yellow_banner"},
+    {"profession": "Shepherd", "level": "Master", "item_id": "minecraft:lime_banner"},
+    {"profession": "Shepherd", "level": "Master", "item_id": "minecraft:pink_banner"},
+    {"profession": "Shepherd", "level": "Master", "item_id": "minecraft:gray_banner"},
+    {"profession": "Shepherd", "level": "Master", "item_id": "minecraft:light_gray_banner"},
+    {"profession": "Shepherd", "level": "Master", "item_id": "minecraft:cyan_banner"},
+    {"profession": "Shepherd", "level": "Master", "item_id": "minecraft:purple_banner"},
+    {"profession": "Shepherd", "level": "Master", "item_id": "minecraft:blue_banner"},
+    {"profession": "Shepherd", "level": "Master", "item_id": "minecraft:brown_banner"},
+    {"profession": "Shepherd", "level": "Master", "item_id": "minecraft:green_banner"},
+    {"profession": "Shepherd", "level": "Master", "item_id": "minecraft:red_banner"},
+    {"profession": "Shepherd", "level": "Master", "item_id": "minecraft:black_banner"},
+    {"profession": "Toolsmith", "level": "Novice", "item_id": "minecraft:stone_axe"},
+    {"profession": "Toolsmith", "level": "Apprentice", "item_id": "minecraft:stone_pickaxe"},
+    {"profession": "Toolsmith", "level": "Journeyman", "item_id": "minecraft:iron_axe"},
+    {"profession": "Toolsmith", "level": "Journeyman", "item_id": "minecraft:iron_shovel"},
+    {"profession": "Toolsmith", "level": "Expert", "item_id": "minecraft:diamond_hoe"},
+    {"profession": "Toolsmith", "level": "Master", "item_id": "minecraft:diamond_axe"},
+    {"profession": "Toolsmith", "level": "Master", "item_id": "minecraft:diamond_pickaxe"},
+    {"profession": "Weaponsmith", "level": "Novice", "item_id": "minecraft:iron_axe"},
+    {"profession": "Weaponsmith", "level": "Apprentice", "item_id": "minecraft:iron_sword"},
+    {"profession": "Weaponsmith", "level": "Expert", "item_id": "minecraft:bell"},
+    {"profession": "Weaponsmith", "level": "Master", "item_id": "minecraft:diamond_axe"},
+    {"profession": "Weaponsmith", "level": "Master", "item_id": "minecraft:diamond_sword"},
+]
+
 
 def is_excluded_item(item_id):
     return item_id in EXCLUDED_ITEM_IDS
+
+
+def readable_name_from_id(item_id):
+    if not item_id:
+        return "Unknown"
+    return item_id.split(":", 1)[-1].replace("_", " ").title()
 
 
 def excluded_sql(column="item_id"):
@@ -414,6 +540,22 @@ def max_stack_size(item_id):
         "minecraft:snowball",
         "minecraft:honey_bottle",
         "minecraft:armor_stand",
+        "minecraft:white_banner",
+        "minecraft:orange_banner",
+        "minecraft:magenta_banner",
+        "minecraft:light_blue_banner",
+        "minecraft:yellow_banner",
+        "minecraft:lime_banner",
+        "minecraft:pink_banner",
+        "minecraft:gray_banner",
+        "minecraft:light_gray_banner",
+        "minecraft:cyan_banner",
+        "minecraft:purple_banner",
+        "minecraft:blue_banner",
+        "minecraft:brown_banner",
+        "minecraft:green_banner",
+        "minecraft:red_banner",
+        "minecraft:black_banner",
         "minecraft:sign",
         "minecraft:oak_sign",
         "minecraft:spruce_sign",
@@ -448,6 +590,11 @@ def max_stack_size(item_id):
         "minecraft:shears",
         "minecraft:flint_and_steel",
         "minecraft:brush",
+        "minecraft:saddle",
+        "minecraft:leather_horse_armor",
+        "minecraft:iron_horse_armor",
+        "minecraft:golden_horse_armor",
+        "minecraft:diamond_horse_armor",
         "minecraft:cake",
         "minecraft:mushroom_stew",
         "minecraft:rabbit_stew",
@@ -654,6 +801,8 @@ def market_prices(conn, item_ids):
             sold_median_24h,
             market_value,
             lowest_listing,
+            listing_count,
+            listed_quantity,
             sales_count_24h,
             volume_24h
         FROM market_stats
@@ -676,6 +825,8 @@ def market_prices(conn, item_ids):
             "market_value": row.get("market_value"),
             "sold_median_24h": row.get("sold_median_24h"),
             "lowest_listing": row.get("lowest_listing"),
+            "listing_count": row.get("listing_count"),
+            "listed_quantity": row.get("listed_quantity"),
             "sales_count_24h": row.get("sales_count_24h"),
             "volume_24h": row.get("volume_24h"),
             "max_stack": max_stack_size(item_id),
@@ -1173,6 +1324,54 @@ def opportunities(conn, params):
     return decorate_items(result)
 
 
+def villager_items(conn, params):
+    profession_filter = params.get("profession", ["all"])[0]
+    trade_items = [
+        trade for trade in VILLAGER_TRADE_ITEMS
+        if not is_excluded_item(trade["item_id"])
+        and (profession_filter == "all" or trade["profession"] == profession_filter)
+    ]
+    item_ids = sorted({trade["item_id"] for trade in trade_items})
+    prices = market_prices(conn, item_ids)
+    professions = sorted({trade["profession"] for trade in VILLAGER_TRADE_ITEMS})
+    rows_out = []
+    seen = set()
+    for trade in trade_items:
+        key = (trade["profession"], trade["level"], trade["item_id"])
+        if key in seen:
+            continue
+        seen.add(key)
+        price = prices.get(trade["item_id"], {})
+        name = price.get("display_name") or readable_name_from_id(trade["item_id"])
+        row = {
+            **trade,
+            "name": name,
+            "display_name": name,
+            "item_key": price.get("item_key"),
+            "market_value": price.get("market_value"),
+            "sold_median_24h": price.get("sold_median_24h"),
+            "lowest_listing": price.get("lowest_listing"),
+            "sales_count_24h": price.get("sales_count_24h") or 0,
+            "volume_24h": price.get("volume_24h") or 0,
+            "listing_count": price.get("listing_count") or 0,
+            "listed_quantity": price.get("listed_quantity") or 0,
+            "max_stack": max_stack_size(trade["item_id"]),
+        }
+        row["price_each"] = price.get("price_each")
+        row["price_stack"] = row["price_each"] * row["max_stack"] if row["price_each"] is not None else None
+        rows_out.append(row)
+
+    order_map = {
+        "price": lambda row: (row["price_each"] is None, -(row["price_each"] or 0), row["profession"], row["name"]),
+        "sales": lambda row: (-(row["sales_count_24h"] or 0), row["profession"], row["name"]),
+        "listed": lambda row: (row["lowest_listing"] is None, row["lowest_listing"] or 0, row["profession"], row["name"]),
+        "profession": lambda row: (row["profession"], row["level"], row["name"]),
+    }
+    sort = params.get("sort", ["sales"])[0]
+    rows_out.sort(key=order_map.get(sort, order_map["sales"]))
+    return {"professions": professions, "items": decorate_items(rows_out)}
+
+
 def search(conn, params):
     q = params.get("q", [""])[0].strip()
     limit = clamp_limit(params.get("limit", ["12"])[0], default=12, maximum=30)
@@ -1299,7 +1498,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
     def translate_path(self, path):
         parsed = urlparse(path)
-        if parsed.path == "/" or parsed.path.startswith("/item/") or parsed.path == "/account":
+        if parsed.path == "/" or parsed.path.startswith("/item/") or parsed.path in {"/account", "/villagers"}:
             return str(STATIC_ROOT / "index.html")
         return str(STATIC_ROOT / parsed.path.lstrip("/"))
 
@@ -1340,6 +1539,9 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 elif parsed.path == "/api/opportunities":
                     key = f"opportunities:{parsed.query}"
                     payload = cached(key, 30, lambda: opportunities(conn, params))
+                elif parsed.path == "/api/villagers":
+                    key = f"villagers:{parsed.query}"
+                    payload = cached(key, 30, lambda: villager_items(conn, params))
                 elif parsed.path == "/api/search":
                     key = f"search:{parsed.query}"
                     payload = cached(key, 10, lambda: search(conn, params))

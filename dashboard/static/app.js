@@ -8,6 +8,8 @@ const state = {
   currentCandles: [],
   currentItem: null,
   auth: null,
+  villagerProfession: "all",
+  villagerSort: "sales",
 };
 
 const $ = (id) => document.getElementById(id);
@@ -179,6 +181,7 @@ function itemPath(itemKey) {
 function setRouteMode() {
   document.body.classList.toggle("item-route", Boolean(currentPathItemKey()));
   document.body.classList.toggle("account-route", window.location.pathname === "/account");
+  document.body.classList.toggle("villager-route", window.location.pathname === "/villagers");
 }
 
 async function api(path) {
@@ -531,6 +534,44 @@ function renderListings(item) {
   }).join("");
 }
 
+function renderVillagerOptions(professions) {
+  const select = $("villager-profession");
+  const current = select.value || state.villagerProfession;
+  select.innerHTML = [
+    `<option value="all">All Villagers</option>`,
+    ...professions.map((profession) => `<option value="${escapeHtml(profession)}">${escapeHtml(profession)}</option>`),
+  ].join("");
+  select.value = professions.includes(current) ? current : "all";
+}
+
+function renderVillagerItems(payload) {
+  renderVillagerOptions(payload.professions || []);
+  const items = payload.items || [];
+  $("villager-items").innerHTML = items.length ? items.map((row) => `
+    <tr data-item-key="${row.item_key || ""}" class="${row.item_key ? "" : "disabled-row"}">
+      <td>${itemNameHtml(row, row.sales_count_24h ? `${fmtNumber(row.sales_count_24h)} sold today` : "No recent sales seen")}</td>
+      <td>
+        <strong>${escapeHtml(row.profession)}</strong>
+        <div class="item-id">${escapeHtml(row.level)}</div>
+      </td>
+      <td>${fmtMoney(row.price_each)}</td>
+      <td>${row.price_stack ? `${fmtMoney(row.price_stack)} / stack (${fmtNumber(row.max_stack)})` : "-"}</td>
+      <td>${fmtListing(row.lowest_listing)}</td>
+      <td>${fmtNumber(row.sales_count_24h)}</td>
+      <td>${fmtNumber(row.listed_quantity)} items · ${fmtNumber(row.listing_count)} listings</td>
+    </tr>
+  `).join("") : `<tr><td colspan="7"><div class="empty-note">No villager trade items found.</div></td></tr>`;
+  $("villager-items").querySelectorAll("tr[data-item-key]").forEach((row) => {
+    if (!row.dataset.itemKey) return;
+    row.addEventListener("click", () => navigateToItem(row.dataset.itemKey));
+  });
+}
+
+async function loadVillagers() {
+  const payload = await api(`/api/villagers?profession=${encodeURIComponent(state.villagerProfession)}&sort=${encodeURIComponent(state.villagerSort)}`);
+  renderVillagerItems(payload);
+}
+
 function recipeDetail(recipe) {
   const canPriceRecipe = recipe.profit !== null && recipe.profit !== undefined;
   const recipeStats = [
@@ -826,6 +867,8 @@ window.addEventListener("popstate", () => {
     selectItem(itemKey, { updateUrl: false, scroll: true });
   } else if (window.location.pathname === "/account") {
     loadAccount();
+  } else if (window.location.pathname === "/villagers") {
+    loadVillagers();
   }
 });
 
@@ -862,6 +905,20 @@ $("logout-button").addEventListener("click", () => {
   });
 });
 
+$("villager-profession").addEventListener("change", (event) => {
+  state.villagerProfession = event.target.value;
+  loadVillagers().catch(console.error);
+});
+
+$("villager-sort").querySelectorAll("button").forEach((button) => {
+  button.addEventListener("click", () => {
+    $("villager-sort").querySelectorAll("button").forEach((b) => b.classList.remove("active"));
+    button.classList.add("active");
+    state.villagerSort = button.dataset.sort;
+    loadVillagers().catch(console.error);
+  });
+});
+
 $("search").addEventListener("input", (event) => {
   clearTimeout(state.searchTimer);
   state.searchTimer = setTimeout(() => runSearch(event.target.value), 160);
@@ -880,6 +937,9 @@ if (pathItemKey) {
 }
 if (window.location.pathname === "/account") {
   loadAccount();
+}
+if (window.location.pathname === "/villagers") {
+  loadVillagers();
 }
 setInterval(refresh, 30000);
 setInterval(refreshSecondary, 60000);

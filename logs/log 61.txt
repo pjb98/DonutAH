@@ -1,0 +1,34 @@
+Villager trades tab
+
+Date: 2026-08-18
+
+What changed:
+- Added a new `/villagers` page to the dashboard.
+- Added a `Villagers` top-nav link.
+- Added `/api/villagers`.
+- Added a server-side villager trade output list grouped by profession and villager level.
+- Joined villager trade outputs to DonutDex market data so each item can show:
+  - usual sell price
+  - stack price
+  - cheapest listing
+  - sold today
+  - items/listings for sale
+- Added villager profession filtering.
+- Added sorting by:
+  - Most Sold
+  - Highest Price
+  - Cheapest Listed
+  - Job
+- Kept banned/unhelpful book and filled-map items excluded from the dashboard.
+- Fixed unstackable villager items such as saddles and horse armor so stack pricing does not show a fake 64-stack value.
+
+Validation:
+- `python3 -m py_compile dashboard/server.py` passed.
+- `node --check dashboard/static/app.js` passed.
+- `/api/villagers?sort=sales` returned 13 professions and villager trade items with market data.
+- `/villagers` returned HTTP 200 locally.
+- Dashboard service restarted successfully.
+- Collector stayed healthy during the change, with recent cycles around 2.3-2.8 seconds.
+
+Notes:
+- The trade list is a static vanilla-style villager output list. If DonutSMP customizes villager trades, this list should be adjusted to match the server.

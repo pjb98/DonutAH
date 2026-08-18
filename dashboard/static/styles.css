@@ -1038,28 +1038,86 @@ h3 {
   display: none;
 }
 
+.villager-panel {
+  display: none;
+}
+
 body.account-route .market-pulse,
 body.account-route .main-panel,
 body.account-route .side-stack,
 body.account-route .chart-panel,
 body.account-route .item-detail-panel,
 body.account-route .activity-panel,
-body.account-route .status-panel {
+body.account-route .status-panel,
+body.account-route .villager-panel,
+body.villager-route .market-pulse,
+body.villager-route .main-panel,
+body.villager-route .side-stack,
+body.villager-route .chart-panel,
+body.villager-route .item-detail-panel,
+body.villager-route .activity-panel,
+body.villager-route .status-panel,
+body.villager-route .account-panel {
   display: none;
 }
 
-body.account-route main {
+body.account-route main,
+body.villager-route main {
   max-width: 1180px;
   margin: 0 auto;
 }
 
-body.account-route .layout {
+body.account-route .layout,
+body.villager-route .layout {
   grid-template-columns: minmax(0, 1fr);
 }
 
 body.account-route .account-panel {
   display: block;
   grid-column: 1 / -1;
+}
+
+body.villager-route .villager-panel {
+  display: block;
+  grid-column: 1 / -1;
+}
+
+.villager-tools {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  background: #151b17;
+}
+
+.villager-tools label {
+  display: grid;
+  gap: 6px;
+  min-width: 220px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.villager-tools select {
+  height: 38px;
+  border: 1px solid #2d3931;
+  border-radius: 7px;
+  background: #101411;
+  color: var(--text);
+  padding: 0 10px;
+  font: inherit;
+}
+
+.disabled-row {
+  cursor: default;
+}
+
+.disabled-row:hover {
+  background: transparent;
 }
 
 .account-body {

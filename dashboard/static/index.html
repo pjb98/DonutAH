@@ -17,6 +17,7 @@
           <a href="#trending">Trending</a>
           <a href="#opportunities">Good Buys</a>
           <a href="#crafting-uses">Crafting</a>
+          <a href="/villagers">Villagers</a>
           <a href="#pro">Pro</a>
           <a href="/account">Account</a>
         </nav>
@@ -215,9 +216,47 @@
             </div>
           </div>
         </div>
+
+        <div class="panel villager-panel" id="villager-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Villager Trades</h2>
+              <div class="subtle">Items villagers can sell, matched with DonutDex market prices.</div>
+            </div>
+            <a class="market-link" href="/">Market</a>
+          </div>
+          <div class="villager-tools">
+            <label>
+              Villager Job
+              <select id="villager-profession"></select>
+            </label>
+            <div class="tabs" id="villager-sort">
+              <button data-sort="sales" class="active">Most Sold</button>
+              <button data-sort="price">Highest Price</button>
+              <button data-sort="listed">Cheapest Listed</button>
+              <button data-sort="profession">Job</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Villager</th>
+                  <th>Sells For</th>
+                  <th>Stack</th>
+                  <th>Cheapest Now</th>
+                  <th>Sold Today</th>
+                  <th>Items For Sale</th>
+                </tr>
+              </thead>
+              <tbody id="villager-items"></tbody>
+            </table>
+          </div>
+        </div>
       </section>
     </main>
 
-    <script src="/app.js?v=45"></script>
+    <script src="/app.js?v=46"></script>
   </body>
 </html>
