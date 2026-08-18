@@ -69,6 +69,7 @@ OAUTH_PROVIDERS = {
 }
 
 VILLAGER_TRADE_ITEMS = [
+    {"profession": "Any Villager", "level": "Trade Reward", "item_id": "minecraft:emerald"},
     {"profession": "Armorer", "level": "Apprentice", "item_id": "minecraft:bell"},
     {"profession": "Armorer", "level": "Journeyman", "item_id": "minecraft:chainmail_leggings"},
     {"profession": "Armorer", "level": "Journeyman", "item_id": "minecraft:chainmail_boots"},
@@ -198,6 +199,7 @@ def is_excluded_item(item_id):
         item_id.endswith("_banner")
         or item_id.endswith("_banner_pattern")
         or item_id.endswith("_explorer_map")
+        or item_id.endswith("_shulker_box")
     )
 
 
@@ -214,7 +216,8 @@ def excluded_sql(column="item_id"):
         f"{column} NOT IN ({placeholders}) "
         f"AND {column} NOT LIKE '%_banner' "
         f"AND {column} NOT LIKE '%_banner_pattern' "
-        f"AND {column} NOT LIKE '%_explorer_map'"
+        f"AND {column} NOT LIKE '%_explorer_map' "
+        f"AND {column} NOT LIKE '%_shulker_box'"
         f"))"
     )
 

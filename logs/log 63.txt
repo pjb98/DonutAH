@@ -1,0 +1,15 @@
+Log 63 - Shulker box exclusion and villager emeralds
+
+Date: 2026-08-18
+
+Changes made:
+- Added Emerald to the Villagers tab as an "Any Villager" trade reward item so players can see its current market data from the villager section.
+- Excluded all shulker box item IDs from dashboard market results, search, listings, crafting/deal views, and villager output through the shared item exclusion helper.
+- Kept shulker shells visible, since the requested exclusion was for shulker boxes specifically.
+
+Validation:
+- `python3 -m py_compile dashboard/server.py` passed.
+- Live `/api/villagers?sort=profession` check returned 97 rows, 1 Emerald row, and 0 shulker-box rows.
+- Live `/api/search?q=shulker%20box&limit=10` returned an empty list.
+- Dashboard service remained active on port 8095 after restart.
+- Collector logs continued showing 1,000 transaction records seen per pass with roughly 40-55 new sales every 5 seconds.
