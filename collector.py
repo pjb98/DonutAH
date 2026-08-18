@@ -8,7 +8,7 @@ import statistics
 import time
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 
 API_BASE = "https://api.donutsmp.net"
@@ -398,7 +398,7 @@ def collect_transactions(conn, api_key, pages):
         data = fetch_json(f"/v1/auction/transactions/{page}", api_key)
         result = data.get("result") or []
         total_seen += len(result)
-        upsert_sales(conn, [normalize_sale(row) for row in result])
+        upsert_sales(conn, [normalize_sale(row) for row in result if isinstance(row, dict)])
         if len(result) == 0:
             break
         time.sleep(0.05)
@@ -424,7 +424,7 @@ def collect_listings(conn, api_key, pages, start_page=1):
         result = data.get("result") or []
         total_seen += len(result)
         last_page = page
-        rows = [normalize_listing(snapshot_at, page, index, row) for index, row in enumerate(result)]
+        rows = [normalize_listing(snapshot_at, page, index, row) for index, row in enumerate(result) if isinstance(row, dict)]
         total_inserted += insert_rows(conn, "auction_listing_snapshots", rows)
         if len(result) == 0:
             next_page = 1
@@ -539,31 +539,34 @@ def recalc_market_stats(conn):
     one_hour_ms = now_ms - 60 * 60 * 1000
     one_day_ms = now_ms - 24 * 60 * 60 * 1000
     seven_days_ms = now_ms - 7 * 24 * 60 * 60 * 1000
+    listing_cutoff_iso = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat(timespec="seconds")
 
-    def price_medians(cutoff_ms):
+    def candle_medians(cutoff_ms):
         grouped = {}
-        for item_key, price_each in conn.execute(
+        for item_key, price in conn.execute(
             """
-            SELECT item_key, price_each
-            FROM auction_sales
-            WHERE sold_at_ms >= ?
-              AND price_each IS NOT NULL
+            SELECT item_key, median
+            FROM item_candles_1m
+            WHERE minute_ms >= ?
+              AND median IS NOT NULL
             ORDER BY item_key
             """,
             (cutoff_ms,),
         ):
-            grouped.setdefault(item_key, []).append(price_each)
+            grouped.setdefault(item_key, []).append(price)
         return {item_key: median_or_none(prices) for item_key, prices in grouped.items()}
 
-    conn.execute("DELETE FROM market_stats")
     item_keys = {
         row[0]
         for row in conn.execute(
             """
             SELECT item_key FROM auction_sales
+            WHERE sold_at_ms >= ?
             UNION
             SELECT item_key FROM auction_listing_snapshots
-            """
+            WHERE snapshot_at >= ?
+            """,
+            (seven_days_ms, listing_cutoff_iso),
         )
     }
 
@@ -572,8 +575,10 @@ def recalc_market_stats(conn):
         """
         SELECT item_key, base_item_key, item_id, display_name, MAX(sold_at_ms) AS last_seen
         FROM auction_sales
+        WHERE sold_at_ms >= ?
         GROUP BY item_key
-        """
+        """,
+        (seven_days_ms,),
     ):
         metadata_by_item[row[0]] = {
             "base_item_key": row[1],
@@ -585,8 +590,10 @@ def recalc_market_stats(conn):
         """
         SELECT item_key, base_item_key, item_id, display_name, MAX(snapshot_at) AS last_seen
         FROM auction_listing_snapshots
+        WHERE snapshot_at >= ?
         GROUP BY item_key
-        """
+        """,
+        (listing_cutoff_iso,),
     ):
         existing = metadata_by_item.get(row[0])
         if not existing or (row[4] or "") > str(existing.get("last_seen") or ""):
@@ -597,9 +604,9 @@ def recalc_market_stats(conn):
                 "last_seen": row[4],
             }
 
-    sold_median_1h = price_medians(one_hour_ms)
-    sold_median_24h = price_medians(one_day_ms)
-    sold_median_7d = price_medians(seven_days_ms)
+    sold_median_1h = candle_medians(one_hour_ms)
+    sold_median_24h = candle_medians(one_day_ms)
+    sold_median_7d = candle_medians(seven_days_ms)
     sales_24h_by_item = {
         row[0]: (row[1] or 0, row[2] or 0, row[3] or 0)
         for row in conn.execute(
@@ -623,17 +630,20 @@ def recalc_market_stats(conn):
         WITH latest_page_scans AS (
             SELECT page, MAX(snapshot_at) AS snapshot_at
             FROM auction_listing_snapshots
+            WHERE snapshot_at >= ?
             GROUP BY page
         )
         SELECT listings.item_key, listings.price_each, listings.quantity
         FROM auction_listing_snapshots listings
         JOIN latest_page_scans latest
-          ON latest.page = listings.page
+         ON latest.page = listings.page
          AND latest.snapshot_at = listings.snapshot_at
-        """
+        """,
+        (listing_cutoff_iso,),
     ):
         listing_rows_by_item.setdefault(row[0], []).append((row[1], row[2]))
 
+    stats_rows = []
     for key in item_keys:
         item_meta = metadata_by_item.get(key, {})
         base_key = item_meta.get("base_item_key")
@@ -656,39 +666,32 @@ def recalc_market_stats(conn):
             value for value in [median_24h, median_7d, median_listing, lowest_listing] if value is not None
         ) if any(value is not None for value in [median_24h, median_7d, median_listing, lowest_listing]) else None
         liquidity_score = min(100.0, float(sales_24h[1]) * 2.0)
-
-        conn.execute(
-            """
-            INSERT INTO market_stats (
-                item_key, calculated_at, base_item_key, item_id, display_name,
-                sold_median_1h, sold_median_24h, sold_median_7d,
-                units_sold_24h, sales_count_24h, volume_24h,
-                lowest_listing, median_listing, listing_count, listed_quantity,
-                market_value, liquidity_score
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
+        stats_rows.append(
             (
-                key,
-                now,
-                base_key,
-                item_id,
-                display_name,
-                median_1h,
-                median_24h,
-                median_7d,
-                int(sales_24h[0]),
-                int(sales_24h[1]),
-                float(sales_24h[2]),
-                lowest_listing,
-                median_listing,
-                len(listing_rows),
-                listed_quantity,
-                market_value,
-                liquidity_score,
-            ),
+                key, now, base_key, item_id, display_name,
+                median_1h, median_24h, median_7d,
+                int(sales_24h[0]), int(sales_24h[1]), float(sales_24h[2]),
+                lowest_listing, median_listing, len(listing_rows), listed_quantity,
+                market_value, liquidity_score,
+            )
         )
+
+    conn.execute("DELETE FROM market_stats")
+    conn.executemany(
+        """
+        INSERT INTO market_stats (
+            item_key, calculated_at, base_item_key, item_id, display_name,
+            sold_median_1h, sold_median_24h, sold_median_7d,
+            units_sold_24h, sales_count_24h, volume_24h,
+            lowest_listing, median_listing, listing_count, listed_quantity,
+            market_value, liquidity_score
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        stats_rows,
+    )
     conn.commit()
+    return len(stats_rows)
 
 
 def print_opportunities(conn, limit, min_sales_24h):
@@ -744,10 +747,8 @@ def run_service(args):
     print(
         f"{utc_now_iso()} service starting "
         f"tx_pages={args.transaction_pages} tx_interval={args.tx_interval}s "
-        f"listing_pages_per_cycle={args.listing_pages_per_cycle} "
-        f"aggregate_interval={args.aggregate_interval}s"
+        f"listing_pages_per_cycle={args.listing_pages_per_cycle}"
     )
-    next_aggregate_at = time.monotonic() + args.aggregate_interval
     while True:
         cycle_started = time.monotonic()
         next_listing_page = int(get_state(conn, "next_listing_page", "1"))
@@ -760,25 +761,52 @@ def run_service(args):
                 start_page=next_listing_page,
             )
             set_state(conn, "next_listing_page", next_listing_page)
-            aggregate_note = ""
-            if time.monotonic() >= next_aggregate_at:
-                aggregate_started = time.monotonic()
-                refresh_recent_candles(conn, lookback_minutes=args.candle_lookback_minutes)
-                recalc_market_stats(conn)
-                next_aggregate_at = time.monotonic() + args.aggregate_interval
-                aggregate_note = f" aggregate_sec={time.monotonic() - aggregate_started:.2f}"
             elapsed = time.monotonic() - cycle_started
             print(
                 f"{utc_now_iso()} tx_seen={tx_seen} tx_new={tx_new} "
                 f"listing_seen={listing_seen} listing_new={listing_new} "
                 f"listing_pages={listing_last}->{next_listing_page} "
-                f"cycle_sec={elapsed:.2f}{aggregate_note}"
+                f"cycle_sec={elapsed:.2f}"
             )
         except Exception as error:
             print(f"{utc_now_iso()} collector_error={error}")
 
         elapsed = time.monotonic() - cycle_started
         time.sleep(max(0.0, args.tx_interval - elapsed))
+
+
+def run_aggregate_once(args):
+    conn = connect(args.db)
+    started = time.monotonic()
+    refresh_recent_candles(conn, lookback_minutes=args.candle_lookback_minutes)
+    candle_elapsed = time.monotonic() - started
+    stats_started = time.monotonic()
+    stats_count = recalc_market_stats(conn)
+    stats_elapsed = time.monotonic() - stats_started
+    total_elapsed = time.monotonic() - started
+    print(
+        f"{utc_now_iso()} aggregate_done "
+        f"candles_sec={candle_elapsed:.2f} "
+        f"stats_sec={stats_elapsed:.2f} "
+        f"stats_rows={stats_count} "
+        f"total_sec={total_elapsed:.2f}"
+    )
+
+
+def run_aggregate_service(args):
+    print(
+        f"{utc_now_iso()} aggregate_service starting "
+        f"interval={args.aggregate_interval}s "
+        f"candle_lookback_minutes={args.candle_lookback_minutes}"
+    )
+    while True:
+        started = time.monotonic()
+        try:
+            run_aggregate_once(args)
+        except Exception as error:
+            print(f"{utc_now_iso()} aggregate_error={error}")
+        elapsed = time.monotonic() - started
+        time.sleep(max(0.0, args.aggregate_interval - elapsed))
 
 
 def main():
@@ -788,9 +816,11 @@ def main():
     parser.add_argument("--listing-pages", type=int, default=20, help="Current listing pages to fetch")
     parser.add_argument("--interval", type=int, default=0, help="Repeat interval in seconds; 0 means run once")
     parser.add_argument("--service", action="store_true", help="Run transaction-first long-running ingestion service")
+    parser.add_argument("--aggregate-once", action="store_true", help="Refresh candles and market stats once")
+    parser.add_argument("--aggregate-service", action="store_true", help="Run candles and market stats refresh loop")
     parser.add_argument("--tx-interval", type=float, default=5.0, help="Seconds between transaction poll cycles in service mode")
     parser.add_argument("--listing-pages-per-cycle", type=int, default=8, help="Listing pages to scan after each transaction poll in service mode")
-    parser.add_argument("--aggregate-interval", type=float, default=300.0, help="Seconds between candle/stat refreshes in service mode")
+    parser.add_argument("--aggregate-interval", type=float, default=300.0, help="Seconds between candle/stat refreshes in aggregate service mode")
     parser.add_argument("--candle-lookback-minutes", type=int, default=180, help="Recent minutes to recalculate for 1m candles")
     parser.add_argument("--show-opportunities", type=int, default=10, help="Print top discount rows after collection")
     parser.add_argument("--min-sales-24h", type=int, default=3, help="Minimum 24h sales for opportunity output")
@@ -804,6 +834,12 @@ def main():
 
     if args.service:
         run_service(args)
+        return
+    if args.aggregate_service:
+        run_aggregate_service(args)
+        return
+    if args.aggregate_once:
+        run_aggregate_once(args)
         return
 
     while True:

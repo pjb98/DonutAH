@@ -1,0 +1,13 @@
+[Unit]
+Description=DonutSMP market stats aggregator
+After=network-online.target donut-market.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/donut-market
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /root/donut-market/collector.py --db /root/donut-market/donut_market.sqlite --aggregate-once --candle-lookback-minutes 180
+
+[Install]
+WantedBy=multi-user.target

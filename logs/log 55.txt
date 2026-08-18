@@ -1,0 +1,56 @@
+Collector/aggregator split - 2026-08-18
+
+Goal:
+Stop slow chart/stat aggregation from blocking Donut transaction ingestion.
+
+Problem observed:
+- Aggregation inside donut-market.service caused long collector pauses.
+- Some aggregation runs previously took 10+ minutes.
+- During those pauses the collector risked missing transaction windows.
+- SQLite also became more likely to report database is locked.
+
+Code changes:
+- Removed candle/stat aggregation from the long-running collector service loop.
+- Added --aggregate-once mode to collector.py.
+- Added --aggregate-service mode during testing.
+- Hardened transaction/listing collection to ignore malformed/null API rows.
+- Changed market median calculations to use item_candles_1m instead of scanning
+  raw sales for every 1h/24h/7d median.
+- Limited market stat listing inputs to recent listing snapshots instead of all
+  historical listing snapshots.
+- Moved the market_stats DELETE until after expensive reads are complete, so
+  the write lock is held for less time.
+
+Systemd changes:
+- Added donut-market-aggregator.service as a oneshot aggregation job.
+- Added donut-market-aggregator.timer to run aggregation hourly.
+- Disabled the resident aggregator service.
+- Enabled the hourly timer.
+
+Installed files:
+- /etc/systemd/system/donut-market-aggregator.service
+- /etc/systemd/system/donut-market-aggregator.timer
+
+Verification:
+- python3 -m py_compile collector.py passed.
+- donut-market.service active.
+- donut-market-dashboard.service active.
+- donut-market-aggregator.timer active and waiting.
+- Next timer run scheduled for 2026-08-18 16:00:22 CEST.
+
+Observed result:
+- Collector no longer logs aggregate_sec in the ingestion loop.
+- Collector continued polling every few seconds while aggregation ran.
+- First optimized oneshot aggregation completed:
+  candles_sec=9.03
+  stats_sec=257.09
+  stats_rows=31536
+  total_sec=266.12
+- Aggregator memory peak dropped from about 4.5G resident-service behavior to
+  about 97.7M for the timer-managed oneshot.
+
+Remaining concern:
+- Aggregation is still several minutes long, but it no longer runs inside the
+  ingestion loop and no longer stays resident all the time.
+- The next deeper fix is pruning old listing snapshots more aggressively and,
+  longer term, moving ingestion/analytics to PostgreSQL.

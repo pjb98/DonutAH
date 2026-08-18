@@ -1,0 +1,11 @@
+[Unit]
+Description=Run DonutSMP market stats aggregator hourly
+
+[Timer]
+OnBootSec=10m
+OnUnitActiveSec=1h
+Persistent=true
+RandomizedDelaySec=2m
+
+[Install]
+WantedBy=timers.target
