@@ -80,10 +80,10 @@ ORDER BY sales_count_24h DESC
 LIMIT 20;"
 ```
 
-## PostgreSQL Migration
+## PostgreSQL
 
-SQLite is still the live collector database, but PostgreSQL is the long-term path for
-concurrent ingestion, dashboard reads, aggregation, and retention cleanup.
+PostgreSQL is the live collector and dashboard database. SQLite remains on disk as the
+pre-cutover database and rollback/reference copy.
 
 The private connection string is read from `DONUTDEX_DATABASE_URL` in `.env.dashboard`.
 Do not commit `.env.dashboard`.
@@ -134,5 +134,6 @@ The migration script uses primary-key `ON CONFLICT DO NOTHING`, so interrupted r
 be started again. Do not run a full import until disk headroom has been checked; keeping
 SQLite and PostgreSQL side-by-side temporarily duplicates a large amount of data.
 
-As of the first PostgreSQL setup pass, completed sales were backfilled into PostgreSQL.
-SQLite remains the live production database until the collector and dashboard are switched.
+Completed sales were backfilled into PostgreSQL before cutover. The rolling listing
+scanner is rebuilding PostgreSQL listing coverage over time; old listing snapshots should
+not be copied blindly without a retention plan.

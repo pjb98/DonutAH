@@ -6,8 +6,9 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 WorkingDirectory=/root/donut-market
+EnvironmentFile=/root/donut-market/.env.dashboard
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/usr/bin/python3 /root/donut-market/collector.py --db /root/donut-market/donut_market.sqlite --aggregate-once --candle-lookback-minutes 180
+ExecStart=/usr/bin/python3 /root/donut-market/collector.py --aggregate-once --candle-lookback-minutes 180
 
 [Install]
 WantedBy=multi-user.target

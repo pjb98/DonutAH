@@ -1,0 +1,42 @@
+PostgreSQL live cutover
+
+Date: 2026-08-18
+
+What changed:
+- Added PostgreSQL backend support to `collector.py`.
+- Added PostgreSQL backend support to `dashboard/server.py`.
+- Kept SQLite support in place as a rollback/reference path.
+- Updated PostgreSQL schema with `idx_sales_sold_at_ms` for time-window queries.
+- Changed collector transaction insertion so PostgreSQL counts inserted rows directly instead of running full table counts every cycle.
+- Fixed PostgreSQL strict GROUP BY compatibility in market-stat metadata queries.
+- Changed dashboard PostgreSQL summary counts to use PostgreSQL planner estimates instead of exact full table counts.
+- Changed dashboard PostgreSQL 24h homepage totals to use `market_stats` preaggregates instead of scanning raw sales on every request.
+- Updated systemd units so collector, dashboard, and aggregator load `.env.dashboard` and use PostgreSQL.
+
+Validation:
+- `python3 -m py_compile collector.py dashboard/server.py migrate_sqlite_to_postgres.py` passed.
+- PostgreSQL aggregator completed successfully:
+  - candles_sec=42.50
+  - stats_sec=49.28
+  - stats_rows=25,787
+  - total_sec=91.78
+- Collector PostgreSQL write smoke test inserted:
+  - 100 transaction rows from one transaction page
+  - 44 listing rows from one listing page
+- Dashboard PostgreSQL smoke test returned summary, search, item detail, candles, recent sales, and crafting data.
+- HTTP timings after optimization:
+  - `/api/summary`: about 0.33s
+  - `/api/search?q=leather&limit=5`: about 0.20s
+
+Current production status:
+- `donut-market.service` is live on PostgreSQL.
+- `donut-market-dashboard.service` is live on PostgreSQL.
+- `donut-market-aggregator.timer` is active and will run PostgreSQL aggregation hourly.
+- Collector cycles after cutover were around 2.5-4.4 seconds.
+- Disk free after cutover was about 25 GB on `/`.
+- PostgreSQL storage was about 3.2 GB.
+
+Notes:
+- PostgreSQL completed-sales history is backfilled and live going forward.
+- PostgreSQL listing snapshot coverage is rebuilding through the rolling scanner; it intentionally did not import all old listing snapshots.
+- SQLite files remain on disk for rollback/reference until the PostgreSQL cutover has had more soak time.

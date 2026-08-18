@@ -15,10 +15,15 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
 
 ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = ROOT.parent
 STATIC_ROOT = ROOT / "static"
 CACHE = {}
+POSTGRES_SCHEMA_READY = False
 SESSION_COOKIE = "donutdex_session"
 SESSION_TTL_SECONDS = 60 * 60 * 24 * 30
 OAUTH_STATE_TTL_SECONDS = 60 * 10
@@ -88,7 +93,74 @@ def now_iso():
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
+def load_env_file(path):
+    if not path.exists():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+def qmark_to_psycopg(sql):
+    return sql.replace("?", "%s")
+
+
+class PostgresDashboardConn:
+    is_postgres = True
+
+    def __init__(self, database_url):
+        self.conn = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
+
+    def execute(self, sql, params=()):
+        cursor = self.conn.cursor()
+        cursor.execute(qmark_to_psycopg(sql), params)
+        return cursor
+
+    def executescript(self, sql):
+        cursor = self.conn.cursor()
+        cursor.execute(sql)
+        return cursor
+
+    def commit(self):
+        self.conn.commit()
+
+    def close(self):
+        self.conn.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        if exc_type:
+            self.conn.rollback()
+        else:
+            self.conn.commit()
+        self.close()
+
+
+def ensure_postgres_schema(conn):
+    global POSTGRES_SCHEMA_READY
+    if POSTGRES_SCHEMA_READY:
+        return
+    schema_path = PROJECT_ROOT / "postgres_schema.sql"
+    conn.executescript(schema_path.read_text(encoding="utf-8"))
+    conn.commit()
+    POSTGRES_SCHEMA_READY = True
+
+
+def postgres_database_url():
+    return os.environ.get("DONUTDEX_DATABASE_URL")
+
+
 def connect(db_path):
+    database_url = postgres_database_url()
+    if database_url:
+        conn = PostgresDashboardConn(database_url)
+        ensure_postgres_schema(conn)
+        return conn
     uri = f"file:{db_path}?mode=ro"
     conn = sqlite3.connect(uri, uri=True, timeout=30)
     conn.row_factory = sqlite3.Row
@@ -97,6 +169,11 @@ def connect(db_path):
 
 
 def connect_write(db_path):
+    database_url = postgres_database_url()
+    if database_url:
+        conn = PostgresDashboardConn(database_url)
+        ensure_postgres_schema(conn)
+        return conn
     conn = sqlite3.connect(db_path, timeout=30)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode = WAL")
@@ -306,7 +383,7 @@ def movement_expr():
     return """
         CASE
             WHEN sold_median_7d IS NOT NULL AND sold_median_7d > 0 AND sold_median_24h IS NOT NULL
-            THEN ROUND((sold_median_24h - sold_median_7d) * 100.0 / sold_median_7d, 2)
+            THEN (sold_median_24h - sold_median_7d) * 100.0 / sold_median_7d
             ELSE NULL
         END
     """
@@ -793,11 +870,18 @@ def upsert_oauth_user(conn, provider, profile, raw_payload):
     if existing:
         user_id = existing["user_id"]
     else:
-        conn.execute(
-            "INSERT INTO users(account_name, minecraft_name, created_at, updated_at) VALUES (?, ?, ?, ?)",
-            (profile["display_name"], None, now, now),
-        )
-        user_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        if getattr(conn, "is_postgres", False):
+            row = conn.execute(
+                "INSERT INTO users(account_name, minecraft_name, created_at, updated_at) VALUES (?, ?, ?, ?) RETURNING id",
+                (profile["display_name"], None, now, now),
+            ).fetchone()
+            user_id = row["id"]
+        else:
+            conn.execute(
+                "INSERT INTO users(account_name, minecraft_name, created_at, updated_at) VALUES (?, ?, ?, ?)",
+                (profile["display_name"], None, now, now),
+            )
+            user_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
     conn.execute(
         """
         INSERT INTO user_identities(
@@ -888,34 +972,54 @@ def player_transaction_history(conn, minecraft_name, limit=100):
     }
 
 
+def table_count_value(conn, table):
+    if getattr(conn, "is_postgres", False):
+        row = one(conn, "SELECT COALESCE(reltuples, 0)::bigint AS value FROM pg_class WHERE oid = ?::regclass", (table,))
+        return row["value"] if row else 0
+    return one(conn, f"SELECT COUNT(*) AS value FROM {table}")["value"]
+
+
 def summary(conn):
     now_ms = int(time.time() * 1000)
     day_ms = 24 * 60 * 60 * 1000
-    last_24h = one(
-        conn,
-        """
-        SELECT
-            COUNT(*) AS transactions,
-            COALESCE(SUM(quantity), 0) AS units,
-            COALESCE(SUM(total_price), 0) AS volume
-        FROM auction_sales
-        WHERE sold_at_ms >= ?
-        """,
-        (now_ms - day_ms,),
-    )
-    previous_24h = one(
-        conn,
-        """
-        SELECT
-            COUNT(*) AS transactions,
-            COALESCE(SUM(quantity), 0) AS units,
-            COALESCE(SUM(total_price), 0) AS volume
-        FROM auction_sales
-        WHERE sold_at_ms >= ?
-          AND sold_at_ms < ?
-        """,
-        (now_ms - 2 * day_ms, now_ms - day_ms),
-    )
+    if getattr(conn, "is_postgres", False):
+        last_24h = one(
+            conn,
+            """
+            SELECT
+                COALESCE(SUM(sales_count_24h), 0)::bigint AS transactions,
+                COALESCE(SUM(units_sold_24h), 0)::bigint AS units,
+                COALESCE(SUM(volume_24h), 0)::double precision AS volume
+            FROM market_stats
+            """,
+        )
+        previous_24h = {"volume": 0}
+    else:
+        last_24h = one(
+            conn,
+            """
+            SELECT
+                COUNT(*) AS transactions,
+                COALESCE(SUM(quantity), 0) AS units,
+                COALESCE(SUM(total_price), 0) AS volume
+            FROM auction_sales
+            WHERE sold_at_ms >= ?
+            """,
+            (now_ms - day_ms,),
+        )
+        previous_24h = one(
+            conn,
+            """
+            SELECT
+                COUNT(*) AS transactions,
+                COALESCE(SUM(quantity), 0) AS units,
+                COALESCE(SUM(total_price), 0) AS volume
+            FROM auction_sales
+            WHERE sold_at_ms >= ?
+              AND sold_at_ms < ?
+            """,
+            (now_ms - 2 * day_ms, now_ms - day_ms),
+        )
     prev_volume = previous_24h["volume"] or 0
     volume_change = None
     if prev_volume > 0:
@@ -940,10 +1044,10 @@ def summary(conn):
             "tx_per_minute": tx_per_minute,
             "activity": activity,
         },
-        "sales": one(conn, "SELECT COUNT(*) AS value FROM auction_sales")["value"],
-        "listings": one(conn, "SELECT COUNT(*) AS value FROM auction_listing_snapshots")["value"],
-        "items": one(conn, "SELECT COUNT(*) AS value FROM market_stats")["value"],
-        "candles": one(conn, "SELECT COUNT(*) AS value FROM item_candles_1m")["value"],
+        "sales": table_count_value(conn, "auction_sales"),
+        "listings": table_count_value(conn, "auction_listing_snapshots"),
+        "items": table_count_value(conn, "market_stats"),
+        "candles": table_count_value(conn, "item_candles_1m"),
         "latest_sale": one(conn, "SELECT MAX(sold_at_ms) AS value FROM auction_sales")["value"],
         "latest_listing_page": one(conn, "SELECT value FROM collector_state WHERE key = 'next_listing_page'"),
     }
@@ -1014,7 +1118,7 @@ def movers(conn, params):
                 sold_median_7d,
                 sales_count_24h,
                 volume_24h,
-                ROUND((sold_median_24h - sold_median_7d) * 100.0 / sold_median_7d, 2) AS change_pct
+                (sold_median_24h - sold_median_7d) * 100.0 / sold_median_7d AS change_pct
             FROM market_stats
             WHERE sold_median_24h IS NOT NULL
               AND sold_median_7d IS NOT NULL
@@ -1052,7 +1156,7 @@ def opportunities(conn, params):
                 units_sold_24h,
                 volume_24h,
                 liquidity_score,
-                ROUND((market_value - lowest_listing) * 100.0 / market_value, 2) AS discount_pct
+                (market_value - lowest_listing) * 100.0 / market_value AS discount_pct
             FROM market_stats
             WHERE market_value IS NOT NULL
               AND lowest_listing IS NOT NULL
@@ -1155,7 +1259,7 @@ def item_detail(conn, params):
             *,
             CASE
                 WHEN sold_median_7d IS NOT NULL AND sold_median_7d > 0 AND sold_median_24h IS NOT NULL
-                THEN ROUND((sold_median_24h - sold_median_7d) * 100.0 / sold_median_7d, 2)
+                THEN (sold_median_24h - sold_median_7d) * 100.0 / sold_median_7d
                 ELSE NULL
             END AS change_pct
         FROM market_stats
@@ -1416,6 +1520,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
 
 def main():
+    load_env_file(PROJECT_ROOT / ".env.dashboard")
     parser = argparse.ArgumentParser(description="Donut Market public dashboard")
     parser.add_argument("--db", default="/root/donut-market/donut_market.sqlite")
     parser.add_argument("--host", default="0.0.0.0")

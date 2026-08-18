@@ -10,9 +10,13 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
+import psycopg2
+from psycopg2.extras import execute_values
+
 
 API_BASE = "https://api.donutsmp.net"
 USER_AGENT = "donut-market-collector/0.1"
+ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
 def utc_now_iso():
@@ -137,7 +141,74 @@ def fetch_json(path, api_key, timeout=20):
         raise RuntimeError(f"HTTP {error.code} for {path}: {body}") from error
 
 
-def connect(db_path):
+def load_env_file(path):
+    if not path or not os.path.exists(path):
+        return
+    with open(path, "r", encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+def qmark_to_psycopg(sql):
+    return sql.replace("?", "%s")
+
+
+class PostgresConn:
+    is_postgres = True
+
+    def __init__(self, database_url):
+        self.conn = psycopg2.connect(database_url)
+
+    def execute(self, sql, params=()):
+        cursor = self.conn.cursor()
+        cursor.execute(qmark_to_psycopg(sql), params)
+        return cursor
+
+    def executemany(self, sql, rows):
+        cursor = self.conn.cursor()
+        cursor.executemany(qmark_to_psycopg(sql), rows)
+        return cursor
+
+    def executescript(self, sql):
+        cursor = self.conn.cursor()
+        cursor.execute(sql)
+        return cursor
+
+    def commit(self):
+        self.conn.commit()
+
+    def close(self):
+        self.conn.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        if exc_type:
+            self.conn.rollback()
+        else:
+            self.conn.commit()
+        self.close()
+
+
+def ensure_postgres_schema(conn):
+    schema_path = os.path.join(ROOT, "postgres_schema.sql")
+    with open(schema_path, "r", encoding="utf-8") as handle:
+        conn.executescript(handle.read())
+    conn.commit()
+
+
+def connect_postgres(database_url):
+    conn = PostgresConn(database_url)
+    ensure_postgres_schema(conn)
+    return conn
+
+
+def connect_sqlite(db_path):
     conn = sqlite3.connect(db_path, timeout=60)
     conn.execute("PRAGMA journal_mode = WAL")
     conn.execute("PRAGMA busy_timeout = 60000")
@@ -273,6 +344,12 @@ def connect(db_path):
     return conn
 
 
+def connect(db_path, database_url=None):
+    if database_url:
+        return connect_postgres(database_url)
+    return connect_sqlite(db_path)
+
+
 def ensure_columns(conn):
     desired = {
         "auction_sales": {
@@ -364,10 +441,25 @@ def insert_rows(conn, table, rows):
     if not rows:
         return 0
     columns = list(rows[0].keys())
+    values = [[row[column] for column in columns] for row in rows]
+    if getattr(conn, "is_postgres", False):
+        placeholders = "(" + ",".join("%s" for _ in columns) + ")"
+        with conn.conn.cursor() as cursor:
+            execute_values(
+                cursor,
+                f"INSERT INTO {table} ({','.join(columns)}) VALUES %s ON CONFLICT DO NOTHING",
+                values,
+                template=placeholders,
+                page_size=len(values),
+            )
+            inserted = cursor.rowcount
+        conn.commit()
+        return max(0, inserted)
+
     placeholders = ",".join("?" for _ in columns)
     sql = f"INSERT OR IGNORE INTO {table} ({','.join(columns)}) VALUES ({placeholders})"
     before = conn.total_changes
-    conn.executemany(sql, [[row[column] for column in columns] for row in rows])
+    conn.executemany(sql, values)
     conn.commit()
     return conn.total_changes - before
 
@@ -376,6 +468,26 @@ def upsert_sales(conn, rows):
     if not rows:
         return 0
     columns = list(rows[0].keys())
+    values = [[row[column] for column in columns] for row in rows]
+    if getattr(conn, "is_postgres", False):
+        placeholders = "(" + ",".join("%s" for _ in columns) + ")"
+        with conn.conn.cursor() as cursor:
+            inserted = execute_values(
+                cursor,
+                f"""
+                INSERT INTO auction_sales ({','.join(columns)})
+                VALUES %s
+                ON CONFLICT (sale_key) DO NOTHING
+                RETURNING sale_key
+                """,
+                values,
+                template=placeholders,
+                page_size=len(values),
+                fetch=True,
+            )
+        conn.commit()
+        return len(inserted)
+
     placeholders = ",".join("?" for _ in columns)
     sql = f"""
         INSERT INTO auction_sales ({','.join(columns)})
@@ -385,7 +497,7 @@ def upsert_sales(conn, rows):
             observation_count = auction_sales.observation_count + 1
     """
     before = conn.total_changes
-    conn.executemany(sql, [[row[column] for column in columns] for row in rows])
+    conn.executemany(sql, values)
     conn.commit()
     changed = conn.total_changes - before
     return sum(1 for row in rows if conn.execute("SELECT observation_count FROM auction_sales WHERE sale_key = ?", (row["sale_key"],)).fetchone()[0] == 1)
@@ -393,17 +505,16 @@ def upsert_sales(conn, rows):
 
 def collect_transactions(conn, api_key, pages):
     total_seen = 0
-    before_count = conn.execute("SELECT COUNT(*) FROM auction_sales").fetchone()[0]
+    total_inserted = 0
     for page in range(1, pages + 1):
         data = fetch_json(f"/v1/auction/transactions/{page}", api_key)
         result = data.get("result") or []
         total_seen += len(result)
-        upsert_sales(conn, [normalize_sale(row) for row in result if isinstance(row, dict)])
+        total_inserted += upsert_sales(conn, [normalize_sale(row) for row in result if isinstance(row, dict)])
         if len(result) == 0:
             break
         time.sleep(0.05)
-    after_count = conn.execute("SELECT COUNT(*) FROM auction_sales").fetchone()[0]
-    return total_seen, after_count - before_count
+    return total_seen, total_inserted
 
 
 def collect_listings(conn, api_key, pages, start_page=1):
@@ -573,10 +684,17 @@ def recalc_market_stats(conn):
     metadata_by_item = {}
     for row in conn.execute(
         """
-        SELECT item_key, base_item_key, item_id, display_name, MAX(sold_at_ms) AS last_seen
-        FROM auction_sales
-        WHERE sold_at_ms >= ?
-        GROUP BY item_key
+        WITH latest_sales AS (
+            SELECT item_key, MAX(sold_at_ms) AS last_seen
+            FROM auction_sales
+            WHERE sold_at_ms >= ?
+            GROUP BY item_key
+        )
+        SELECT sales.item_key, sales.base_item_key, sales.item_id, sales.display_name, latest.last_seen
+        FROM auction_sales sales
+        JOIN latest_sales latest
+          ON latest.item_key = sales.item_key
+         AND latest.last_seen = sales.sold_at_ms
         """,
         (seven_days_ms,),
     ):
@@ -588,10 +706,17 @@ def recalc_market_stats(conn):
         }
     for row in conn.execute(
         """
-        SELECT item_key, base_item_key, item_id, display_name, MAX(snapshot_at) AS last_seen
-        FROM auction_listing_snapshots
-        WHERE snapshot_at >= ?
-        GROUP BY item_key
+        WITH latest_listings AS (
+            SELECT item_key, MAX(snapshot_at) AS last_seen
+            FROM auction_listing_snapshots
+            WHERE snapshot_at >= ?
+            GROUP BY item_key
+        )
+        SELECT listings.item_key, listings.base_item_key, listings.item_id, listings.display_name, latest.last_seen
+        FROM auction_listing_snapshots listings
+        JOIN latest_listings latest
+          ON latest.item_key = listings.item_key
+         AND latest.last_seen = listings.snapshot_at
         """,
         (listing_cutoff_iso,),
     ):
@@ -702,7 +827,7 @@ def print_opportunities(conn, limit, min_sales_24h):
             item_id,
             market_value,
             lowest_listing,
-            ROUND((market_value - lowest_listing) * 100.0 / market_value, 2) AS discount_pct,
+            (market_value - lowest_listing) * 100.0 / market_value AS discount_pct,
             sales_count_24h,
             units_sold_24h,
             listing_count,
@@ -727,7 +852,7 @@ def run_once(args):
     api_key = os.environ.get("DONUT_API_KEY")
     if not api_key:
         raise SystemExit("Set DONUT_API_KEY in your environment.")
-    conn = connect(args.db)
+    conn = connect(args.db, args.database_url)
     tx_seen, tx_inserted = collect_transactions(conn, api_key, args.transaction_pages)
     listing_seen, listing_inserted, _, _ = collect_listings(conn, api_key, args.listing_pages)
     recalc_market_stats(conn)
@@ -743,7 +868,7 @@ def run_service(args):
     api_key = os.environ.get("DONUT_API_KEY")
     if not api_key:
         raise SystemExit("Set DONUT_API_KEY in your environment.")
-    conn = connect(args.db)
+    conn = connect(args.db, args.database_url)
     print(
         f"{utc_now_iso()} service starting "
         f"tx_pages={args.transaction_pages} tx_interval={args.tx_interval}s "
@@ -776,7 +901,7 @@ def run_service(args):
 
 
 def run_aggregate_once(args):
-    conn = connect(args.db)
+    conn = connect(args.db, args.database_url)
     started = time.monotonic()
     refresh_recent_candles(conn, lookback_minutes=args.candle_lookback_minutes)
     candle_elapsed = time.monotonic() - started
@@ -810,8 +935,10 @@ def run_aggregate_service(args):
 
 
 def main():
+    load_env_file(os.path.join(ROOT, ".env.dashboard"))
     parser = argparse.ArgumentParser(description="Collect DonutSMP auction data into SQLite.")
     parser.add_argument("--db", default="donut_market.sqlite", help="SQLite database path")
+    parser.add_argument("--database-url", default=os.environ.get("DONUTDEX_DATABASE_URL"), help="PostgreSQL connection URL")
     parser.add_argument("--transaction-pages", type=int, default=10, help="Transaction pages to fetch, max 10")
     parser.add_argument("--listing-pages", type=int, default=20, help="Current listing pages to fetch")
     parser.add_argument("--interval", type=int, default=0, help="Repeat interval in seconds; 0 means run once")

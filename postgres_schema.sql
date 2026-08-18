@@ -29,6 +29,9 @@ CREATE INDEX IF NOT EXISTS idx_sales_item_sold_at
 CREATE INDEX IF NOT EXISTS idx_sales_sold_at
     ON auction_sales(sold_at);
 
+CREATE INDEX IF NOT EXISTS idx_sales_sold_at_ms
+    ON auction_sales(sold_at_ms);
+
 CREATE INDEX IF NOT EXISTS idx_sales_item_sold_at_ms
     ON auction_sales(item_key, sold_at_ms);
 
