@@ -1,0 +1,52 @@
+Storage cleanup and DonutDex WAL recovery - 2026-08-18
+
+Starting disk state:
+- Root filesystem was 95% full.
+- Free space was about 4.3G.
+
+Cleaned old project/archive data:
+- Deleted archived Solana wallet investigator data directory:
+  /root/archives/solana-wallet-investigator-2026-08-15/data
+  Recovered about 14G.
+
+- Deleted rebuildable old project artifacts:
+  /root/lily/node_modules
+  /root/RugHunters_backend_work
+  /root/RugHunters_economy_work
+  /root/RugHunters_milestones_work
+  /root/RugHunters_profile_work
+  /root/RugHunters_supabase_work
+  /root/RugHunters_tuning_work
+  Recovered about 4G.
+
+Found DonutDex collector issue:
+- donut-market.service was active, but logs showed repeated:
+  collector_error=database is locked
+- DonutDex WAL file had grown to about 7.7G.
+
+Recovery performed:
+- Stopped donut-market.service.
+- Stopped donut-market-dashboard.service.
+- Ran SQLite WAL truncate checkpoint.
+- Restarted donut-market-dashboard.service.
+- Restarted donut-market.service.
+- Reloaded systemd daemon to clear unit-change warnings.
+
+After checkpoint:
+- donut_market.sqlite remained about 19G.
+- donut_market.sqlite-wal dropped from about 7.7G to 0, then resumed normal
+  growth at about 5.5M after collection restarted.
+
+Ending disk state:
+- Root filesystem was 60% full.
+- Free space was about 29G.
+
+Collector verification:
+- donut-market.service active.
+- First post-restart poll inserted 979 new transactions.
+- Subsequent polls completed in about 2 seconds.
+
+Note:
+The database lock/aggregation problem still needs a real architecture fix:
+collector ingestion should be split from slow market aggregation so collection
+cannot stall while charts/stats are recalculated.
