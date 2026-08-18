@@ -1,0 +1,49 @@
+Non-DonutDex disk cleanup
+
+Date: 2026-08-18
+
+Starting disk state:
+- `/` had about 25 GB free before cleanup.
+
+Removed from old/non-DonutDex projects:
+- Old Python virtual environments:
+  - `/root/runner-scanner/.venv`
+  - `/root/telegram-download-chat/.venv`
+  - `/root/pumpfun-research/.venv`
+  - `/root/slvr-monitor/.venv`
+  - `/root/projects/trojan/venv`
+  - `/root/Pumpfun Scanner/.venv`
+  - `/root/projects/LOL_discord_bot/venv`
+  - `/root/projects/Budgeting Dashboard/finance-bot/venv`
+  - `/root/projects/Polymarket_Insider/polymarket-whale-tracker/venv`
+- Old Node dependency folders:
+  - `/root/projects/RugHunters/node_modules`
+  - `/root/projects/Polymarket_Insider/polymarket-whale-tracker/node_modules`
+  - `/root/projects/twitch-account-creator/node_modules`
+- Old browser/profile/cache data:
+  - `/root/projects/trojan/chromium-profile`
+  - `/root/.cache/pip`
+  - selected `.codex` plugin/cache temp folders
+- Old downloaded/exported data:
+  - `/root/.local/share/telegram-download-chat/downloads`
+  - `/root/.local/share/telegram-download-chat/analysis`
+  - `/root/pumpfun-research/exports`
+  - `/root/telegram-download-chat/Trench_Warfare`
+- Old non-DonutDex project databases:
+  - `/root/projects/LOL_discord_bot/lol_rank_bot.db`
+  - `/root/runner-scanner/data/runner.sqlite`
+  - `/root/slvr-monitor/data/slvr_monitor.db`
+- Python cache folders from old projects.
+
+Final disk state:
+- `/` had about 31 GB free after cleanup.
+- `/` usage dropped to about 58%.
+
+Validation:
+- DonutDex files were not removed.
+- `donut-market.service` stayed healthy after cleanup.
+- Recent collector cycles were around 2.3-3.2 seconds.
+
+Notes:
+- `.codex/packages/standalone` remains the largest non-DonutDex directory at about 1.7 GB. It was not removed because it may be part of the Codex runtime/cache.
+- SQLite DonutDex files remain on disk for PostgreSQL cutover rollback/reference.
