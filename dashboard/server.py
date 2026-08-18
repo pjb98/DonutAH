@@ -1543,7 +1543,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
     def translate_path(self, path):
         parsed = urlparse(path)
-        if parsed.path == "/" or parsed.path.startswith("/item/") or parsed.path in {"/account", "/villagers"}:
+        app_routes = {"/market", "/trending", "/deals", "/crafting", "/pro", "/account", "/villagers"}
+        if parsed.path == "/" or parsed.path.startswith("/item/") or parsed.path in app_routes:
             return str(STATIC_ROOT / "index.html")
         return str(STATIC_ROOT / parsed.path.lstrip("/"))
 

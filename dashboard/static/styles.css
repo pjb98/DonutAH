@@ -212,12 +212,16 @@ main {
 .main-panel,
 .chart-panel,
 .item-detail-panel,
-.activity-panel,
-.status-panel {
+.activity-panel {
   grid-column: span 1;
 }
 
+.route-panel,
 .activity-panel {
+  display: none;
+}
+
+.status-panel {
   display: none;
 }
 
@@ -412,6 +416,10 @@ tbody tr:hover,
   padding: 8px;
 }
 
+.route-list {
+  padding: 8px 12px 12px;
+}
+
 .list-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -428,6 +436,18 @@ tbody tr:hover,
 
 .gain {
   color: var(--green);
+}
+
+.route-empty {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  color: var(--muted);
+}
+
+.route-empty strong {
+  color: var(--text);
+  font-size: 18px;
 }
 
 .loss {
@@ -512,8 +532,7 @@ body.item-route .hero {
 body.item-route .hero-copy p,
 body.item-route .market-pulse,
 body.item-route .main-panel,
-body.item-route .side-stack,
-body.item-route .status-panel {
+body.item-route .side-stack {
   display: none;
 }
 
@@ -1047,6 +1066,31 @@ h3 {
   display: none;
 }
 
+body:not(.item-route):not(.account-route):not(.villager-route) .chart-panel,
+body:not(.item-route):not(.account-route):not(.villager-route) .item-detail-panel,
+body:not(.item-route):not(.account-route):not(.villager-route) .activity-panel {
+  display: none;
+}
+
+body.trending-route .main-panel,
+body.trending-route .side-stack,
+body.deals-route .main-panel,
+body.deals-route .side-stack,
+body.crafting-route .main-panel,
+body.crafting-route .side-stack,
+body.pro-route .main-panel,
+body.pro-route .side-stack {
+  display: none;
+}
+
+body.trending-route .trending-route-panel,
+body.deals-route .deals-route-panel,
+body.crafting-route .crafting-route-panel,
+body.pro-route .pro-route-panel {
+  display: block;
+  grid-column: 1 / -1;
+}
+
 body.account-route .market-pulse,
 body.account-route .main-panel,
 body.account-route .side-stack,
@@ -1062,18 +1106,28 @@ body.villager-route .chart-panel,
 body.villager-route .item-detail-panel,
 body.villager-route .activity-panel,
 body.villager-route .status-panel,
-body.villager-route .account-panel {
+body.villager-route .account-panel,
+body.account-route .route-panel,
+body.villager-route .route-panel {
   display: none;
 }
 
 body.account-route main,
-body.villager-route main {
+body.villager-route main,
+body.trending-route main,
+body.deals-route main,
+body.crafting-route main,
+body.pro-route main {
   max-width: 1180px;
   margin: 0 auto;
 }
 
 body.account-route .layout,
-body.villager-route .layout {
+body.villager-route .layout,
+body.trending-route .layout,
+body.deals-route .layout,
+body.crafting-route .layout,
+body.pro-route .layout {
   grid-template-columns: minmax(0, 1fr);
 }
 
@@ -1207,6 +1261,13 @@ body.villager-route .villager-panel {
   color: var(--text);
   padding: 0 12px;
   font: inherit;
+  text-transform: none;
+}
+
+.field-help {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
   text-transform: none;
 }
 

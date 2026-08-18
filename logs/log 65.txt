@@ -1,0 +1,28 @@
+Log 65 - Public route and empty-state cleanup
+
+Date: 2026-08-18
+
+Changes made:
+- Updated the homepage headline copy to say "Live DonutSMP prices, sales history, listings, and good buys."
+- Changed top navigation links from hash jumps to real app routes for Market, Trending, Good Buys, Crafting, Pro, Villagers, and Account.
+- Added app shell support for `/market`, `/trending`, `/deals`, `/crafting`, and `/pro`.
+- Hid item-only sections on the homepage until a player selects an item:
+  - Item details
+  - Price chart
+  - Recent sales
+  - Listings now
+- Removed the homepage auto-select behavior that previously loaded the first market item by default.
+- Added standalone Trending and Good Buys route panels that reuse the live market data.
+- Added simple Crafting and Pro route panels so those routes do not look like empty state jumps.
+- Hid the generic Status panel from normal users.
+- Reworded Account page copy to remove developer-facing OAuth setup language.
+- Reworded disabled login providers as "Coming soon."
+- Changed "Minecraft Name" to "Minecraft Username" and clarified that it is used to match public auction sales.
+- Changed the item-page Pro box to clearly say the feature is coming soon instead of showing inactive actions.
+
+Validation:
+- `python3 -m py_compile dashboard/server.py` passed.
+- `node --check dashboard/static/app.js` passed.
+- Dashboard service restarted successfully.
+- Local route checks returned HTTP 200 for `/market`, `/trending`, `/deals`, `/crafting`, `/pro`, `/account`, and `/villagers`.
+- Collector remained active, with recent passes seeing 1,000 transactions and adding 19-24 new sales per pass.

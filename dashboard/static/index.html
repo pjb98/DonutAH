@@ -11,14 +11,14 @@
       <div class="hero-copy">
         <div class="brand">DonutDex</div>
         <h1>DonutSMP Market Tracker</h1>
-        <p>Live prices, sales, money spent, and auction deals from completed sales.</p>
+        <p>Live DonutSMP prices, sales history, listings, and good buys.</p>
         <nav class="top-nav" aria-label="DonutDex sections">
-          <a href="/">Market</a>
-          <a href="#trending">Trending</a>
-          <a href="#opportunities">Good Buys</a>
-          <a href="#crafting-uses">Crafting</a>
+          <a href="/market">Market</a>
+          <a href="/trending">Trending</a>
+          <a href="/deals">Good Buys</a>
+          <a href="/crafting">Crafting</a>
           <a href="/villagers">Villagers</a>
-          <a href="#pro">Pro</a>
+          <a href="/pro">Pro</a>
           <a href="/account">Account</a>
         </nav>
       </div>
@@ -33,6 +33,52 @@
       <section class="market-pulse" id="market-pulse"></section>
 
       <section class="layout">
+        <div class="panel route-panel trending-route-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Trending</h2>
+              <div class="subtle">Items with the biggest price moves today</div>
+            </div>
+          </div>
+          <div id="trending-page" class="route-list"></div>
+        </div>
+
+        <div class="panel route-panel deals-route-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Good Buys</h2>
+              <div class="subtle">Listings seen below their usual sell price</div>
+            </div>
+          </div>
+          <div id="deals-page" class="route-list"></div>
+        </div>
+
+        <div class="panel route-panel crafting-route-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Crafting</h2>
+              <div class="subtle">Search an item to see what you can make and whether it is worth crafting.</div>
+            </div>
+          </div>
+          <div class="route-empty">
+            <strong>Start with an item.</strong>
+            <span>Try Leather, Egg, Wheat, Pumpkin, or Sugar to see crafting prices and profit.</span>
+          </div>
+        </div>
+
+        <div class="panel route-panel pro-route-panel">
+          <div class="panel-head">
+            <div>
+              <h2>DonutDex Pro</h2>
+              <div class="subtle">Extra tools for alerts, watchlists, and finding good buys faster.</div>
+            </div>
+          </div>
+          <div class="route-empty">
+            <strong>Coming soon.</strong>
+            <span>Basic market prices, sales history, villager trades, and crafting info stay free.</span>
+          </div>
+        </div>
+
         <div class="panel main-panel">
           <div class="panel-head">
             <div>
@@ -140,12 +186,7 @@
             <div id="advanced-stats" class="advanced-stats"></div>
             <div class="pro-panel" id="pro">
               <strong>DonutDex Pro</strong>
-              <span>Get price alerts, find good buys faster, and watch your favorite items.</span>
-              <div class="pro-actions">
-                <span>Alert me at my price</span>
-                <span>Find good buys</span>
-                <span>Track this item</span>
-              </div>
+              <span>Coming soon: price alerts, watchlists, and faster good-buy tools for this item.</span>
             </div>
           </div>
         </div>
@@ -164,7 +205,7 @@
           </div>
         </div>
 
-        <div class="panel status-panel">
+        <div class="panel status-panel" aria-hidden="true">
           <div class="panel-head compact">
             <h2>Status</h2>
             <div class="status" id="status">Loading</div>
@@ -176,14 +217,14 @@
           <div class="panel-head">
             <div>
               <h2>Account</h2>
-              <div class="subtle">Connect a login and set your Minecraft name to track your sales.</div>
+              <div class="subtle">Save favorite items, set price alerts later, and track sales matched to your Minecraft username.</div>
             </div>
             <a class="market-link" href="/">Market</a>
           </div>
           <div class="account-body">
             <div class="login-card" id="login-card">
-              <h3>Log In</h3>
-              <p>Choose a provider. These buttons turn on when OAuth credentials are configured on the server.</p>
+              <h3>Log in to DonutDex</h3>
+              <p>Save favorite items, set price alerts later, and track your public auction sales.</p>
               <div class="login-buttons" id="login-buttons"></div>
               <div class="empty-note" id="auth-message"></div>
             </div>
@@ -201,8 +242,9 @@
                 <input id="account-name" type="text" maxlength="40" placeholder="DonutDex name">
               </label>
               <label>
-                Minecraft Name
+                Minecraft Username
                 <input id="minecraft-name" type="text" maxlength="40" placeholder="Exact Minecraft name">
+                <span class="field-help">Used to match your public auction sales.</span>
               </label>
               <button id="save-profile">Save Profile</button>
             </div>
@@ -257,6 +299,6 @@
       </section>
     </main>
 
-    <script src="/app.js?v=46"></script>
+    <script src="/app.js?v=47"></script>
   </body>
 </html>

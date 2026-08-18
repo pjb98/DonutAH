@@ -179,9 +179,14 @@ function itemPath(itemKey) {
 }
 
 function setRouteMode() {
+  const path = window.location.pathname;
   document.body.classList.toggle("item-route", Boolean(currentPathItemKey()));
-  document.body.classList.toggle("account-route", window.location.pathname === "/account");
-  document.body.classList.toggle("villager-route", window.location.pathname === "/villagers");
+  document.body.classList.toggle("account-route", path === "/account");
+  document.body.classList.toggle("villager-route", path === "/villagers");
+  document.body.classList.toggle("trending-route", path === "/trending");
+  document.body.classList.toggle("deals-route", path === "/deals");
+  document.body.classList.toggle("crafting-route", path === "/crafting");
+  document.body.classList.toggle("pro-route", path === "/pro");
 }
 
 async function api(path) {
@@ -243,13 +248,10 @@ function renderMarkets(rows) {
     tr.addEventListener("click", () => navigateToItem(tr.dataset.itemKey));
   });
 
-  if (!state.selectedItemKey && rows[0] && !currentPathItemKey()) {
-    selectItem(rows[0].item_key, { updateUrl: false, scroll: false });
-  }
 }
 
 function renderOpportunities(rows) {
-  $("opportunities").innerHTML = rows.map((row) => `
+  const html = rows.map((row) => `
     <div class="list-row" data-item-key="${row.item_key}">
       <div>
         ${itemNameHtml(row, `Listed ${fmtMoney(row.lowest_listing)} · Usual ${fmtMoney(row.market_value)}`)}
@@ -258,13 +260,18 @@ function renderOpportunities(rows) {
       <div class="gain">${fmtPct(row.discount_pct)}</div>
     </div>
   `).join("");
-  $("opportunities").querySelectorAll(".list-row").forEach((row) => {
-    row.addEventListener("click", () => navigateToItem(row.dataset.itemKey));
+  ["opportunities", "deals-page"].forEach((id) => {
+    const el = $(id);
+    if (!el) return;
+    el.innerHTML = html || `<div class="empty-note">No good buys found right now.</div>`;
+    el.querySelectorAll(".list-row").forEach((row) => {
+      row.addEventListener("click", () => navigateToItem(row.dataset.itemKey));
+    });
   });
 }
 
 function renderTrending(rows) {
-  $("trending").innerHTML = rows.map((row) => `
+  const html = rows.map((row) => `
     <div class="list-row" data-item-key="${row.item_key}">
       <div>
         ${itemNameHtml(row, `${fmtMoney(row.sold_median_24h)} · ${fmtNumber(row.sales_count_24h)} sales`)}
@@ -272,8 +279,13 @@ function renderTrending(rows) {
       <div class="${pctClass(row.change_pct)}">${fmtPct(row.change_pct)}</div>
     </div>
   `).join("");
-  $("trending").querySelectorAll(".list-row").forEach((row) => {
-    row.addEventListener("click", () => navigateToItem(row.dataset.itemKey));
+  ["trending", "trending-page"].forEach((id) => {
+    const el = $(id);
+    if (!el) return;
+    el.innerHTML = html || `<div class="empty-note">No trending items found right now.</div>`;
+    el.querySelectorAll(".list-row").forEach((row) => {
+      row.addEventListener("click", () => navigateToItem(row.dataset.itemKey));
+    });
   });
 }
 
@@ -763,8 +775,8 @@ function renderAccount(auth) {
   $("account-history").style.display = user ? "block" : "none";
   $("login-buttons").innerHTML = auth.providers.map((provider) => `
     <a class="login-button ${provider.configured ? "" : "disabled"}" href="${provider.configured ? `/auth/${provider.provider}?next=/account` : "#"}" aria-disabled="${provider.configured ? "false" : "true"}">
-      <strong>${provider.label}</strong>
-      <span>${provider.configured ? "Log in" : "Needs setup"}</span>
+      <strong>Continue with ${provider.label}</strong>
+      <span>${provider.configured ? "Log in" : "Coming soon"}</span>
     </a>
   `).join("");
   if (!user) return;
