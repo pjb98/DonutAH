@@ -1,0 +1,32 @@
+Log 70 - Quantity-weighted Try Higher pricing
+
+Date: 2026-08-18
+
+User feedback:
+- Try Higher should consider how much of an item actually sells at higher prices, not only the per-item price percentile.
+- Stack-sized sales can matter because Minecraft players often buy and sell in useful bundle sizes.
+
+Leather findings:
+- Recent Leather sales still showed transaction p90 at 18000.0 and highest sale at 40000.0.
+- Quantity-weighted p90 was 3468.75.
+- Quantity-weighted p95 was 4687.5.
+- This means high per-item Leather sales exist, but most actual Leather quantity is still selling far below 15000-18000.
+
+Changes made:
+- Updated Try Higher to use quantity-weighted 24h sold-price percentiles instead of transaction-only p90.
+- Added `sold_weighted_p90_24h` and `sold_weighted_p95_24h` to item detail API responses.
+- Try Higher now uses the quantity-weighted p95/p90 signal, capped at 140% of usual sell price.
+- Current listings still act as a cap only when the cheapest listing is already above the normal suggestion.
+
+Validation:
+- `python3 -m py_compile dashboard/server.py` passed.
+- Dashboard service restarted successfully.
+- Live Leather validation:
+  - Usual sell price: 2421.875
+  - Cheapest listing: 1218.75
+  - Transaction p90: 18000.0
+  - Quantity-weighted p90: 3468.75
+  - Quantity-weighted p95: 4687.5
+  - Highest sold price today: 40000.0
+  - Suggested prices: quick 2300.78, normal 2470.31, try higher 3390.62
+- Collector remained active, with recent passes seeing 1,000 transactions and adding 53-81 new sales per pass.

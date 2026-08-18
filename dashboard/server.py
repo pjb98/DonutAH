@@ -939,11 +939,11 @@ def suggested_prices(stats):
         market_list = min(max(market * 1.02, lowest * 0.99), market * 1.12)
     else:
         market_list = market * 1.03
-    p90_today = stats.get("sold_p90_24h")
-    if p90_today is not None and p90_today > market_list:
-        caps = [p90_today, market * 1.3]
+    volume_supported_high = stats.get("sold_weighted_p95_24h") or stats.get("sold_weighted_p90_24h")
+    if volume_supported_high is not None and volume_supported_high > market_list:
+        caps = [volume_supported_high, market * 1.4]
         if lowest is not None and lowest > market_list:
-            caps.append(lowest * 1.05)
+            caps.append(lowest * 1.08)
         max_profit = max(market_list, min(caps))
     else:
         max_profit = market_list * 1.08
@@ -959,7 +959,7 @@ def sold_price_stats_24h(conn, item_key):
     price_rows = rows(
         conn,
         """
-        SELECT price_each
+        SELECT price_each, quantity
         FROM auction_sales
         WHERE item_key = ?
           AND sold_at_ms >= ?
@@ -970,9 +970,32 @@ def sold_price_stats_24h(conn, item_key):
     )
     prices = [float(row["price_each"]) for row in price_rows]
     if not prices:
-        return {"high": None, "p90": None}
+        return {"high": None, "p90": None, "weighted_p90": None, "weighted_p95": None}
     p90_index = min(len(prices) - 1, max(0, int((len(prices) - 1) * 0.9)))
-    return {"high": prices[-1], "p90": prices[p90_index]}
+    weighted = []
+    for row in price_rows:
+        quantity = int(row.get("quantity") or 0)
+        if quantity > 0:
+            weighted.append((float(row["price_each"]), quantity))
+
+    def weighted_percentile(percentile):
+        total = sum(quantity for _, quantity in weighted)
+        if not total:
+            return None
+        target = total * percentile
+        running = 0
+        for price, quantity in weighted:
+            running += quantity
+            if running >= target:
+                return price
+        return weighted[-1][0]
+
+    return {
+        "high": prices[-1],
+        "p90": prices[p90_index],
+        "weighted_p90": weighted_percentile(0.9),
+        "weighted_p95": weighted_percentile(0.95),
+    }
 
 
 def enchant_summary_from_json(value):
@@ -1559,6 +1582,8 @@ def item_detail(conn, params):
     sold_price_stats = sold_price_stats_24h(conn, stats.get("item_key"))
     stats["sold_high_24h"] = sold_price_stats["high"]
     stats["sold_p90_24h"] = sold_price_stats["p90"]
+    stats["sold_weighted_p90_24h"] = sold_price_stats["weighted_p90"]
+    stats["sold_weighted_p95_24h"] = sold_price_stats["weighted_p95"]
     stats["suggested_prices"] = suggested_prices(stats)
     stats["uses"] = enrich_recipe_economics(conn, item_uses(stats.get("item_id")))
     stats["candles"] = candles(conn, {"item_key": [item_key], "range": [params.get("range", ["24h"])[0]]})
