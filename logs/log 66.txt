@@ -1,0 +1,18 @@
+Log 66 - Sell price wording and stack suggestions
+
+Date: 2026-08-18
+
+Question answered:
+- Usual Sell Price is based on completed auction sales, meaning prices players actually paid recently.
+- Average Listing is based on current items listed for sale, meaning prices sellers are asking for right now.
+- These can differ because listed items may be overpriced, stale, underpriced, or not sold yet.
+
+Changes made:
+- Added helper text under the item-page Usual Sell Price explaining that it is based on recent purchases.
+- Added helper text under Average Listing explaining that it is based on current listings.
+- Added per-stack prices to the Sell Fast, Normal, and Try Higher suggestion cards.
+
+Validation:
+- `node --check dashboard/static/app.js` passed.
+- Dashboard service restarted successfully.
+- Collector remained active, with recent passes seeing 1,000 transactions and adding 41-59 new sales per pass.

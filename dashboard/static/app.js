@@ -417,17 +417,27 @@ function renderItemDetails(item) {
   $("detail-subtitle").textContent = item.uses?.summary || "Live market data from recent DonutSMP auction sales.";
   $("detail-item-id").textContent = "";
   const marketPrice = item.price_each || item.market_value || item.sold_median_24h;
+  const stackSize = item.max_stack || 64;
   $("market-price").textContent = fmtMoney(marketPrice);
-  $("stack-price").textContent = item.price_stack ? `≈ ${fmtMoney(item.price_stack)} per stack (${fmtNumber(item.max_stack || 64)})` : "";
+  $("stack-price").innerHTML = [
+    item.price_stack ? `≈ ${fmtMoney(item.price_stack)} per stack (${fmtNumber(stackSize)})` : "",
+    `<span class="metric-help">Based on what players actually bought recently.</span>`,
+  ].filter(Boolean).join("");
   $("movement-line").innerHTML = `<span class="${pctClass(item.change_pct)}">${fmtPct(item.change_pct)} 24h vs 7d</span>`;
   const suggested = item.suggested_prices || {};
   $("suggested-price").textContent = fmtMoney(suggested.market);
-  $("suggested-stack").textContent = suggested.market && item.max_stack ? `${fmtMoney(suggested.market * item.max_stack)} / stack` : "";
+  $("suggested-stack").textContent = suggested.market && stackSize ? `${fmtMoney(suggested.market * stackSize)} / stack` : "";
   $("suggested-modes").innerHTML = [
     ["Sell Fast", suggested.quick],
     ["Normal", suggested.market],
     ["Try Higher", suggested.max_profit],
-  ].map(([label, value]) => `<span><strong>${label}</strong>${fmtMoney(value)}</span>`).join("");
+  ].map(([label, value]) => `
+    <span>
+      <strong>${label}</strong>
+      <b>${fmtMoney(value)} each</b>
+      <small>${value && stackSize ? `${fmtMoney(value * stackSize)} / stack` : "-"}</small>
+    </span>
+  `).join("");
   $("donut-says").innerHTML = `
     <strong>DonutDex Says</strong>
     <span>${itemLabel(item)} usually sells for around ${plainPrice(marketPrice)} each.</span>
@@ -456,12 +466,13 @@ function renderItemDetails(item) {
     ["Price Change", fmtPct(item.change_pct)],
     ["Units Sold Today", fmtNumber(item.units_sold_24h)],
     ["Price Score", fmtNumber(item.liquidity_score, 0)],
-    ["Average Listing", fmtMoney(item.median_listing)],
+    ["Average Listing", fmtMoney(item.median_listing), "Based on items currently listed for sale."],
   ];
-  $("advanced-stats").innerHTML = advanced.map(([label, value]) => `
+  $("advanced-stats").innerHTML = advanced.map(([label, value, help]) => `
     <div>
       <span>${label}</span>
       <strong>${value}</strong>
+      ${help ? `<small>${help}</small>` : ""}
     </div>
   `).join("");
 
