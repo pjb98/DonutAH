@@ -1,0 +1,24 @@
+Log 69 - Leather high-price sale share
+
+Date: 2026-08-18
+
+Question answered:
+- Checked completed Leather sales from the last 24 hours to see how much activity happened in the 15000-18000 per-item range.
+
+Results:
+- Total Leather sales: 766 transactions
+- Total Leather items sold: 27636
+- Total money spent on Leather: 59107579.9
+- Sales in 15000-18000 range: 44 transactions
+- Items sold in 15000-18000 range: 77
+- Money spent in 15000-18000 range: 1240000.0
+
+Percentages:
+- 5.74% of Leather transactions were in the 15000-18000 range.
+- 0.28% of Leather items sold were in the 15000-18000 range.
+- 2.10% of Leather money spent was in the 15000-18000 range.
+
+Interpretation:
+- The high-price range appears in transaction count, but it is mostly very small-quantity sales.
+- By actual item quantity, nearly all Leather sold below that range.
+- This suggests Try Higher should consider both sold-price percentile and item quantity before recommending prices near 15000-18000.
