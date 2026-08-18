@@ -1,6 +1,6 @@
 # Donut Market
 
-SQLite collector for DonutSMP auction listings and completed auction transactions.
+Collector and dashboard for DonutSMP auction listings and completed auction transactions.
 
 The API key is read from `DONUT_API_KEY`. Do not hardcode it into source files.
 
@@ -79,3 +79,60 @@ WHERE market_value IS NOT NULL
 ORDER BY sales_count_24h DESC
 LIMIT 20;"
 ```
+
+## PostgreSQL Migration
+
+SQLite is still the live collector database, but PostgreSQL is the long-term path for
+concurrent ingestion, dashboard reads, aggregation, and retention cleanup.
+
+The private connection string is read from `DONUTDEX_DATABASE_URL` in `.env.dashboard`.
+Do not commit `.env.dashboard`.
+
+Apply the PostgreSQL schema only:
+
+```sh
+python3 migrate_sqlite_to_postgres.py --schema-only
+```
+
+Run a small smoke import:
+
+```sh
+python3 migrate_sqlite_to_postgres.py --skip-schema --limit 1000 --batch-size 250
+```
+
+Run a resumable table import:
+
+```sh
+python3 migrate_sqlite_to_postgres.py --skip-schema --table auction_sales --batch-size 5000
+```
+
+Resume a single-primary-key table after the highest primary key already in PostgreSQL:
+
+```sh
+python3 migrate_sqlite_to_postgres.py \
+  --skip-schema \
+  --table auction_sales \
+  --batch-size 5000 \
+  --skip-count \
+  --resume-from-postgres \
+  --sleep-between-batches 0.5
+```
+
+Catch up recent completed sales after a long backfill:
+
+```sh
+python3 migrate_sqlite_to_postgres.py \
+  --skip-schema \
+  --table auction_sales \
+  --batch-size 5000 \
+  --skip-count \
+  --sales-since-minutes 180 \
+  --sleep-between-batches 0.25
+```
+
+The migration script uses primary-key `ON CONFLICT DO NOTHING`, so interrupted runs can
+be started again. Do not run a full import until disk headroom has been checked; keeping
+SQLite and PostgreSQL side-by-side temporarily duplicates a large amount of data.
+
+As of the first PostgreSQL setup pass, completed sales were backfilled into PostgreSQL.
+SQLite remains the live production database until the collector and dashboard are switched.

@@ -1,0 +1,51 @@
+PostgreSQL migration foundation
+
+Date: 2026-08-18
+
+What changed:
+- Installed PostgreSQL 16, postgresql-contrib, and python3-psycopg2 on the VPS.
+- Created the local PostgreSQL role `donutdex`.
+- Created the local PostgreSQL database `donutdex`, owned by `donutdex`.
+- Added `DONUTDEX_DATABASE_URL` to the private `.env.dashboard` file.
+- Added `postgres_schema.sql`, mirroring the current DonutDex SQLite market, candle, collector state, and account tables.
+- Added `migrate_sqlite_to_postgres.py`, a batched and resumable SQLite-to-PostgreSQL migration tool.
+- Updated README with PostgreSQL schema and migration commands.
+
+Validation:
+- `python3 -m py_compile migrate_sqlite_to_postgres.py` passed.
+- Applied the PostgreSQL schema successfully.
+- Ran a row-limited smoke import with `--limit 1000 --batch-size 250`.
+- PostgreSQL smoke counts after import:
+  - auction_sales: 1,000
+  - auction_listing_snapshots: 1,000
+  - market_stats: 1,000
+  - item_candles_1m: 1,000
+  - collector_state: 1
+- Live SQLite collector stayed active during the smoke import.
+
+Backfill:
+- Backfilled the completed sales history first, because it is the most valuable long-term dataset.
+- Intentionally did not backfill the full listing snapshot history yet because that is the highest storage-risk table.
+- The first unthrottled pass reached 260,000 sales in PostgreSQL but stretched collector cycles, so it was stopped.
+- Added safer migration controls:
+  - `--skip-count`
+  - `--resume-from-postgres`
+  - `--sleep-between-batches`
+  - `--sales-since-minutes`
+- Resumed with throttling and completed the historical `auction_sales` pass.
+- Ran a 180-minute recent-sales catch-up after the historical pass.
+- Ran a final 30-minute recent-sales catch-up.
+- PostgreSQL had 1,844,771 completed sales after the catch-up check.
+- PostgreSQL latest sale timestamp was still behind SQLite because SQLite remains the live writer.
+
+Current status:
+- The production collector and dashboard still use SQLite.
+- PostgreSQL has the completed-sales history backfilled and is ready for the next migration stage.
+- PostgreSQL is not yet live/current because the collector is still writing to SQLite.
+- Disk after the completed-sales backfill was about 25 GB free on `/`.
+- PostgreSQL storage usage was about 3.3 GB.
+- The collector was active and healthy after the backfill, with recent cycles around 3-4 seconds.
+
+Important caution:
+- Do not run a full SQLite-to-PostgreSQL import blindly. The SQLite database is about 19 GB, and keeping both databases side-by-side will temporarily duplicate substantial data.
+- The next safe step is to switch the collector/dashboard to PostgreSQL or add an ongoing sync path, then deal with listing snapshots using retention rules instead of copying all old snapshots blindly.
