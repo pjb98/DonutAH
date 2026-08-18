@@ -939,11 +939,14 @@ def suggested_prices(stats):
         market_list = min(max(market * 1.02, lowest * 0.99), market * 1.12)
     else:
         market_list = market * 1.03
-    high_today = stats.get("sold_high_24h")
-    if high_today is not None and high_today > market:
-        max_profit = min(high_today, market * 1.5)
+    p90_today = stats.get("sold_p90_24h")
+    if p90_today is not None and p90_today > market_list:
+        caps = [p90_today, market * 1.3]
+        if lowest is not None and lowest > market_list:
+            caps.append(lowest * 1.05)
+        max_profit = max(market_list, min(caps))
     else:
-        max_profit = market * 1.18
+        max_profit = market_list * 1.08
     return {
         "quick": round(market * 0.95, 2),
         "market": round(market_list, 2),
@@ -951,20 +954,25 @@ def suggested_prices(stats):
     }
 
 
-def sold_high_24h(conn, item_key):
+def sold_price_stats_24h(conn, item_key):
     cutoff_ms = int(time.time() * 1000) - 24 * 60 * 60 * 1000
-    row = one(
+    price_rows = rows(
         conn,
         """
-        SELECT MAX(price_each) AS value
+        SELECT price_each
         FROM auction_sales
         WHERE item_key = ?
           AND sold_at_ms >= ?
           AND price_each IS NOT NULL
+        ORDER BY price_each
         """,
         (item_key, cutoff_ms),
     )
-    return row["value"] if row else None
+    prices = [float(row["price_each"]) for row in price_rows]
+    if not prices:
+        return {"high": None, "p90": None}
+    p90_index = min(len(prices) - 1, max(0, int((len(prices) - 1) * 0.9)))
+    return {"high": prices[-1], "p90": prices[p90_index]}
 
 
 def enchant_summary_from_json(value):
@@ -1548,7 +1556,9 @@ def item_detail(conn, params):
     price_each = stats.get("market_value") or stats.get("sold_median_24h") or stats.get("lowest_listing")
     stats["price_each"] = price_each
     stats["price_stack"] = price_each * stats["max_stack"] if price_each is not None else None
-    stats["sold_high_24h"] = sold_high_24h(conn, stats.get("item_key"))
+    sold_price_stats = sold_price_stats_24h(conn, stats.get("item_key"))
+    stats["sold_high_24h"] = sold_price_stats["high"]
+    stats["sold_p90_24h"] = sold_price_stats["p90"]
     stats["suggested_prices"] = suggested_prices(stats)
     stats["uses"] = enrich_recipe_economics(conn, item_uses(stats.get("item_id")))
     stats["candles"] = candles(conn, {"item_key": [item_key], "range": [params.get("range", ["24h"])[0]]})

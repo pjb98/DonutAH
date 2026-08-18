@@ -1,0 +1,24 @@
+Log 68 - Safer Try Higher formula
+
+Date: 2026-08-18
+
+Changes made:
+- Replaced the temporary Try Higher formula that used the single highest sale from the last 24 hours.
+- Added 24-hour sold-price stats to item detail responses:
+  - `sold_high_24h`
+  - `sold_p90_24h`
+- Changed Try Higher to use the 90th percentile sold price from the last 24 hours when available.
+- Capped Try Higher at 130% of the usual sell price to avoid recommending extreme outlier sales.
+- Kept current-listing awareness, but only uses the cheapest listing as a cap when current listings are already above the normal suggestion.
+- If there is not enough useful 90th percentile data, Try Higher falls back to 108% of the normal suggestion.
+
+Validation:
+- `python3 -m py_compile dashboard/server.py` passed.
+- Dashboard service restarted successfully.
+- Live Leather validation:
+  - Usual sell price: 2421.875
+  - Cheapest listing: 2031.25
+  - 90th percentile sold price today: 18000.0
+  - Highest sold price today: 40000.0
+  - Suggested prices: quick 2300.78, normal 2470.31, try higher 3148.44
+- This confirms Try Higher is meaningfully above Normal without following the extreme 40000.0 sale.
