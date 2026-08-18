@@ -946,6 +946,26 @@ def suggested_prices(stats):
     }
 
 
+def enchant_summary_from_json(value):
+    if not value:
+        return "Plain"
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError:
+            return "Enchanted"
+    levels = ((value or {}).get("enchantments") or {}).get("levels")
+    if not levels:
+        return "Plain"
+    if isinstance(levels, dict):
+        parts = []
+        for enchantment, level in sorted(levels.items()):
+            name = str(enchantment).split(":", 1)[-1].replace("_", " ").title()
+            parts.append(f"{name} {level}")
+        return ", ".join(parts) if parts else "Enchanted"
+    return "Enchanted"
+
+
 def recent_sales(conn, item_key, limit=12):
     return rows(
         conn,
@@ -961,7 +981,7 @@ def recent_sales(conn, item_key, limit=12):
 
 
 def current_listings(conn, item_key, limit=48):
-    return rows(
+    listings = rows(
         conn,
         """
         WITH latest_page_scans AS (
@@ -975,7 +995,8 @@ def current_listings(conn, item_key, limit=48):
             listings.price_each,
             listings.total_price,
             listings.seller_name,
-            listings.time_left
+            listings.time_left,
+            listings.enchants_json
         FROM auction_listing_snapshots listings
         JOIN latest_page_scans latest
           ON latest.page = listings.page
@@ -986,6 +1007,10 @@ def current_listings(conn, item_key, limit=48):
         """,
         (item_key, limit),
     )
+    for listing in listings:
+        listing["enchant_summary"] = enchant_summary_from_json(listing.get("enchants_json"))
+        listing.pop("enchants_json", None)
+    return listings
 
 
 def current_user(conn, handler):

@@ -476,9 +476,11 @@ function renderItemDetails(item) {
 function groupedListings(listings) {
   const groups = new Map();
   listings.forEach((listing) => {
-    const key = Number(listing.price_each || 0).toFixed(2);
+    const enchantSummary = listing.enchant_summary || "Plain";
+    const key = `${Number(listing.price_each || 0).toFixed(2)}|${enchantSummary}`;
     const current = groups.get(key) || {
       price_each: Number(listing.price_each || 0),
+      enchant_summary: enchantSummary,
       quantity: 0,
       total_price: 0,
       count: 0,
@@ -526,7 +528,7 @@ function renderListings(item) {
           ${itemIcon(item, "tiny")}
           <div>
             <strong>${fmtMoney(group.price_each)} each × ${fmtNumber(group.quantity)}</strong>
-            <span>${fmtMoney(group.total_price)} total · ${group.count} listing${group.count === 1 ? "" : "s"} · ${fmtDurationMs(group.time_left)} · <em class="freshness ${seen.klass}">${seen.label}</em></span>
+            <span><b class="listing-trait">${group.enchant_summary}</b> · ${fmtMoney(group.total_price)} total · ${group.count} listing${group.count === 1 ? "" : "s"} · ${fmtDurationMs(group.time_left)} · <em class="freshness ${seen.klass}">${seen.label}</em></span>
           </div>
         </div>
       </div>

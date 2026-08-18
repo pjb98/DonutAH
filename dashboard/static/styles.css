@@ -949,6 +949,11 @@ h3 {
   font-size: 11px;
 }
 
+.listing-trait {
+  color: var(--blue);
+  font-weight: 800;
+}
+
 .freshness {
   font-style: normal;
 }

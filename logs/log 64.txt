@@ -1,0 +1,20 @@
+Log 64 - Diamond pickaxe enchant visibility
+
+Date: 2026-08-18
+
+Question answered:
+- Checked active Diamond Pickaxe listing metadata to determine whether the listings were plain or enchanted.
+- The sampled current Diamond Pickaxe listings had `enchantments.levels = None` and `lore = null`, so the API reports them as plain, unenchanted pickaxes.
+- A broader check across 200 active Diamond Pickaxe rows found 200 plain rows and 0 enchanted rows.
+
+Changes made:
+- Added an `enchant_summary` field to current listing API results.
+- Current listings now show "Plain" when no enchantments are present.
+- Listings are grouped by both price and enchant summary, so a plain item and enchanted item at the same price will not be merged together.
+
+Validation:
+- `python3 -m py_compile dashboard/server.py` passed.
+- `node --check dashboard/static/app.js` passed.
+- Live item API returned 48 Diamond Pickaxe listings with `Plain` enchant summaries.
+- Dashboard service restarted successfully and remained active.
+- Collector continued running, with recent passes seeing 1,000 transactions and adding 37-71 new sales per pass.
