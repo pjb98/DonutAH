@@ -1,0 +1,29 @@
+PostgreSQL listing retention setup
+
+Date: 2026-08-18
+
+What changed:
+- Added PostgreSQL maintenance mode to `maintenance.py`.
+- Configured retention for:
+  - listing snapshots: 30 hours
+  - completed sales: 90 days
+- Updated `donut-market-maintenance.service` to run PostgreSQL maintenance instead of SQLite maintenance.
+- Updated `donut-market-maintenance.timer` to run hourly with a small randomized delay.
+- Disabled the old SQLite weekly vacuum timer.
+
+Validation:
+- PostgreSQL maintenance dry-run completed successfully.
+- Installed the updated maintenance service/timer into systemd.
+- Verified active timers:
+  - `donut-market-maintenance.timer`
+  - `donut-market-aggregator.timer`
+- Ran one real PostgreSQL maintenance pass.
+- The first PostgreSQL retention pass deleted 430 old listing snapshot rows and 0 sales rows.
+- A follow-up pass deleted 0 rows.
+- Maintenance runtime was about 4-6 seconds.
+- Collector stayed healthy during maintenance, with recent cycles around 2.5-4.1 seconds.
+
+Current status:
+- Raw listing snapshots are now pruned hourly after 30 hours.
+- Completed sales are retained for 90 days.
+- SQLite files remain on disk only for rollback/reference.

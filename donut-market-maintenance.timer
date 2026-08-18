@@ -1,10 +1,10 @@
 [Unit]
-Description=Run DonutSMP market database maintenance daily
+Description=Run DonutSMP market PostgreSQL retention hourly
 
 [Timer]
-OnCalendar=*-*-* 03:20:00
+OnCalendar=hourly
 Persistent=true
-RandomizedDelaySec=10m
+RandomizedDelaySec=5m
 
 [Install]
 WantedBy=timers.target

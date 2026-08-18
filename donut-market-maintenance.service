@@ -5,4 +5,5 @@ After=donut-market.service
 [Service]
 Type=oneshot
 WorkingDirectory=/root/donut-market
-ExecStart=/usr/bin/python3 /root/donut-market/maintenance.py --db /root/donut-market/donut_market.sqlite --listing-retention-hours 48 --sales-retention-days 30
+EnvironmentFile=/root/donut-market/.env.dashboard
+ExecStart=/usr/bin/python3 /root/donut-market/maintenance.py --postgres --listing-retention-hours 30 --sales-retention-days 90 --skip-eligible-counts --ensure-indexes
