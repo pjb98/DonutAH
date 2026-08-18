@@ -30,7 +30,9 @@ OAUTH_STATE_TTL_SECONDS = 60 * 10
 EXCLUDED_ITEM_IDS = {
     "minecraft:book",
     "minecraft:enchanted_book",
+    "minecraft:map",
     "minecraft:filled_map",
+    "minecraft:banner",
     "minecraft:writable_book",
     "minecraft:written_book",
     "minecraft:knowledge_book",
@@ -188,7 +190,15 @@ VILLAGER_TRADE_ITEMS = [
 
 
 def is_excluded_item(item_id):
-    return item_id in EXCLUDED_ITEM_IDS
+    if item_id in EXCLUDED_ITEM_IDS:
+        return True
+    if not item_id:
+        return False
+    return (
+        item_id.endswith("_banner")
+        or item_id.endswith("_banner_pattern")
+        or item_id.endswith("_explorer_map")
+    )
 
 
 def readable_name_from_id(item_id):
@@ -199,7 +209,14 @@ def readable_name_from_id(item_id):
 
 def excluded_sql(column="item_id"):
     placeholders = ",".join(f"'{item_id}'" for item_id in sorted(EXCLUDED_ITEM_IDS))
-    return f"({column} IS NULL OR {column} NOT IN ({placeholders}))"
+    return (
+        f"({column} IS NULL OR ("
+        f"{column} NOT IN ({placeholders}) "
+        f"AND {column} NOT LIKE '%_banner' "
+        f"AND {column} NOT LIKE '%_banner_pattern' "
+        f"AND {column} NOT LIKE '%_explorer_map'"
+        f"))"
+    )
 
 
 def cached(key, ttl_seconds, factory):
@@ -231,7 +248,7 @@ def load_env_file(path):
 
 
 def qmark_to_psycopg(sql):
-    return sql.replace("?", "%s")
+    return sql.replace("%", "%%").replace("?", "%s")
 
 
 class PostgresDashboardConn:

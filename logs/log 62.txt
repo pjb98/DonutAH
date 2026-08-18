@@ -1,0 +1,26 @@
+Banner and map exclusion
+
+Date: 2026-08-18
+
+What changed:
+- Expanded dashboard item exclusions to hide customizable banner and map items.
+- Added exact exclusions for:
+  - `minecraft:map`
+  - `minecraft:filled_map`
+  - `minecraft:banner`
+- Added suffix exclusions for:
+  - `*_banner`
+  - `*_banner_pattern`
+  - `*_explorer_map`
+- Updated the SQL exclusion helper so search, market tables, item detail, villager trades, opportunities, and account history all use the same filtering behavior.
+- Fixed PostgreSQL placeholder conversion for SQL containing literal `%` LIKE patterns.
+
+Validation:
+- `python3 -m py_compile dashboard/server.py` passed.
+- Search for `banner` returned no rows.
+- Search for `map` returned no rows.
+- Search for `filled map` returned no rows.
+- Villager trade data returned no excluded banner/map outputs.
+- Live `/api/villagers?sort=profession` returned HTTP 200 in about 0.24 seconds.
+- Dashboard service restarted successfully.
+- Collector stayed healthy, with recent cycles around 2.3-3.0 seconds.
