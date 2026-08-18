@@ -428,16 +428,31 @@ function renderItemDetails(item) {
   $("suggested-price").textContent = fmtMoney(suggested.market);
   $("suggested-stack").textContent = suggested.market && stackSize ? `${fmtMoney(suggested.market * stackSize)} / stack` : "";
   $("suggested-modes").innerHTML = [
-    ["Sell Fast", suggested.quick],
-    ["Normal", suggested.market],
-    ["Try Higher", suggested.max_profit],
-  ].map(([label, value]) => `
-    <span>
+    ["Sell Fast", suggested.quick, false],
+    ["Normal", suggested.market, false],
+    ["Try Higher", suggested.max_profit, true],
+  ].map(([label, value, locked]) => `
+    <span class="${locked ? "pro-suggestion locked" : ""}" ${locked ? 'role="button" tabindex="0"' : ""}>
       <strong>${label}</strong>
-      <b>${fmtMoney(value)} each</b>
-      <small>${value && stackSize ? `${fmtMoney(value * stackSize)} / stack` : "-"}</small>
+      ${locked ? '<em>Pro</em>' : ""}
+      <b class="${locked ? "locked-value" : ""}">${fmtMoney(value)} each</b>
+      <small class="${locked ? "locked-value" : ""}">${value && stackSize ? `${fmtMoney(value * stackSize)} / stack` : "-"}</small>
+      ${locked ? '<button type="button" class="reveal-pro-price">Reveal for testing</button>' : ""}
     </span>
   `).join("");
+  $("suggested-modes").querySelectorAll(".pro-suggestion").forEach((card) => {
+    card.addEventListener("click", () => {
+      alert("DonutDex Pro is coming soon. This would open the Pro checkout when payments are connected.");
+    });
+  });
+  $("suggested-modes").querySelectorAll(".reveal-pro-price").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const card = button.closest(".pro-suggestion");
+      card?.classList.remove("locked");
+      button.remove();
+    });
+  });
   $("donut-says").innerHTML = `
     <strong>DonutDex Says</strong>
     <span>${itemLabel(item)} usually sells for around ${plainPrice(marketPrice)} each.</span>

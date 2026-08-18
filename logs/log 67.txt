@@ -1,0 +1,21 @@
+Log 67 - Pro-gated Try Higher pricing
+
+Date: 2026-08-18
+
+Changes made:
+- Changed the Try Higher suggested price to be a Pro-only UI card.
+- Styled Try Higher with the Pro/amber treatment.
+- Blurred the Try Higher per-item and per-stack values while locked.
+- Added a temporary "Reveal for testing" button so the value can be seen during development.
+- Clicking the locked Try Higher card now opens a placeholder Pro prompt.
+- Made Try Higher more aggressive:
+  - It now uses the highest sold price from the last 24 hours when useful.
+  - It caps that value at 150% of the usual sell price to avoid recommending extreme outlier sales.
+  - If no useful high sale exists, it falls back to 118% of the usual sell price.
+
+Validation:
+- `python3 -m py_compile dashboard/server.py` passed.
+- `node --check dashboard/static/app.js` passed.
+- Dashboard service restarted successfully.
+- Live Leather item response included `sold_high_24h = 40000.0`, but `Try Higher` was capped to 3632.81 from a usual price of 2421.875.
+- Collector remained active, with recent passes seeing 1,000 transactions and adding 36-71 new sales per pass.

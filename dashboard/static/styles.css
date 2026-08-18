@@ -652,6 +652,7 @@ body.item-route .activity-panel {
 }
 
 .suggested-modes span {
+  position: relative;
   border: 1px solid #26312b;
   border-radius: 6px;
   background: #101411;
@@ -673,6 +674,45 @@ body.item-route .activity-panel {
 
 .suggested-modes small {
   color: var(--muted);
+}
+
+.suggested-modes .pro-suggestion {
+  border-color: #5f451f;
+  background: #1e1810;
+  cursor: pointer;
+}
+
+.suggested-modes .pro-suggestion em {
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  border: 1px solid #6c4d22;
+  border-radius: 999px;
+  color: var(--amber);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+  padding: 1px 5px;
+  text-transform: uppercase;
+}
+
+.suggested-modes .locked .locked-value {
+  filter: blur(5px);
+  user-select: none;
+}
+
+.reveal-pro-price {
+  width: 100%;
+  margin-top: 7px;
+  border: 1px solid #6c4d22;
+  border-radius: 5px;
+  background: #2a1d0d;
+  color: var(--amber);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 5px 6px;
 }
 
 .donut-says {

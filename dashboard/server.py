@@ -939,11 +939,32 @@ def suggested_prices(stats):
         market_list = min(max(market * 1.02, lowest * 0.99), market * 1.12)
     else:
         market_list = market * 1.03
+    high_today = stats.get("sold_high_24h")
+    if high_today is not None and high_today > market:
+        max_profit = min(high_today, market * 1.5)
+    else:
+        max_profit = market * 1.18
     return {
         "quick": round(market * 0.95, 2),
         "market": round(market_list, 2),
-        "max_profit": round(market * 1.12, 2),
+        "max_profit": round(max_profit, 2),
     }
+
+
+def sold_high_24h(conn, item_key):
+    cutoff_ms = int(time.time() * 1000) - 24 * 60 * 60 * 1000
+    row = one(
+        conn,
+        """
+        SELECT MAX(price_each) AS value
+        FROM auction_sales
+        WHERE item_key = ?
+          AND sold_at_ms >= ?
+          AND price_each IS NOT NULL
+        """,
+        (item_key, cutoff_ms),
+    )
+    return row["value"] if row else None
 
 
 def enchant_summary_from_json(value):
@@ -1527,6 +1548,7 @@ def item_detail(conn, params):
     price_each = stats.get("market_value") or stats.get("sold_median_24h") or stats.get("lowest_listing")
     stats["price_each"] = price_each
     stats["price_stack"] = price_each * stats["max_stack"] if price_each is not None else None
+    stats["sold_high_24h"] = sold_high_24h(conn, stats.get("item_key"))
     stats["suggested_prices"] = suggested_prices(stats)
     stats["uses"] = enrich_recipe_economics(conn, item_uses(stats.get("item_id")))
     stats["candles"] = candles(conn, {"item_key": [item_key], "range": [params.get("range", ["24h"])[0]]})
