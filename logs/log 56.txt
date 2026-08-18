@@ -1,0 +1,39 @@
+Listing prune experiment and rollback - 2026-08-18
+
+Goal:
+Reduce database growth by pruning old listing snapshots more aggressively.
+
+Attempted approach:
+- Added faster maintenance options:
+  --skip-counts
+  --skip-eligible-counts
+- Added an index helper for auction_listing_snapshots(snapshot_at).
+- Created a temporary hourly listing-prune service/timer locally.
+- Ran the prune job once with 12-hour listing retention.
+
+Result:
+- The prune job caused database locking during live collection.
+- Collector logs showed repeated:
+  collector_error=database is locked
+- The prune job consumed about 3.5G memory before it was stopped.
+
+Rollback:
+- Stopped donut-market-listing-prune.service.
+- Disabled donut-market-listing-prune.timer.
+- Removed the installed prune unit files from /etc/systemd/system.
+- Removed the prune service/timer files from the repo before commit.
+
+Collector recovery:
+- Collector recovered immediately after prune was stopped.
+- It inserted 831 transactions on the first recovered cycle, then continued
+  normal polling every few seconds.
+
+Kept changes:
+- maintenance.py now supports skipping expensive full table counts.
+- maintenance.py can skip eligible-row counts and report deleted_rows.
+- maintenance.py ensures a snapshot_at index when maintenance runs.
+
+Conclusion:
+Live SQLite pruning is still too risky on the current database. Listing pruning
+should either run during a planned downtime/checkpoint window or be handled
+after migrating this workload to PostgreSQL.
